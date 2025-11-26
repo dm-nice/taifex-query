@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.vscode/
+*.csv
+*.png
+*.log
+*.tmp
+*.bak
