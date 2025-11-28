@@ -1,0 +1,65 @@
+name: Taifex Daily Update with README
+
+on:
+  schedule:
+    - cron: "0 22 * * *"   # UTC 22:00 → 台灣時間隔天 06:00
+  workflow_dispatch:       # 手動觸發
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.9"
+
+    - name: Install dependencies
+      run: |
+        pip install pandas matplotlib
+
+    - name: Generate visualization
+      run: |
+        python - <<'EOF'
+        import pandas as pd
+        import matplotlib.pyplot as plt
+        import glob, os, datetime
+
+        # 找最新的 CSV
+        files = glob.glob("data/*trading.csv")
+        if files:
+            latest = max(files, key=os.path.getctime)
+            df = pd.read_csv(latest)
+
+            # 假設 CSV 有 "日期" 與 "外資淨額" 欄位
+            plt.figure(figsize=(10,5))
+            plt.plot(df["日期"], df["外資淨額"], marker="o", label="外資淨額")
+            plt.title("外資淨額趨勢")
+            plt.xlabel("日期")
+            plt.ylabel("淨額")
+            plt.legend()
+            plt.grid(True)
+            os.makedirs("visualize", exist_ok=True)
+            plt.savefig("visualize/foreign_net_trend.png")
+
+            # 更新 README
+            latest_date = df["日期"].iloc[-1]
+            readme_path = "README.md"
+            with open(readme_path, "w", encoding="utf-8") as f:
+                f.write(f"# TAIFEX 自動化查詢專案（每日更新）\n\n")
+                f.write(f"📅 最新更新日期：{latest_date}\n\n")
+                f.write("![外資淨額趨勢](visualize/foreign_net_trend.png)\n\n")
+                f.write("本專案每天早上 06:00 自動抓取前一交易日資料，並更新折線圖。")
+        EOF
+
+    - name: Commit and push results
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git add README.md visualize/*.png data/*.csv
+        git commit -m "docs: 自動更新 README 與折線圖"
+        git push
