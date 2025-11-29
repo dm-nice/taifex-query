@@ -1,61 +1,6 @@
-##2025.11.29 PM 12:21
+20251129 12:40
 
-README 範例段落
-markdown
-## Debug Pipeline 使用說明
-
-為了提升錯誤回報與分析效率，本專案提供整合工具 `utils/debug_pipeline.py`。  
-此模組會在程式執行出錯時，自動產生完整的錯誤紀錄 Markdown 檔案，並存放於 `issues/` 目錄下。
-
-### 功能
-- 自動建立錯誤紀錄 `.md` 檔案
-- 紀錄錯誤摘要與完整 Traceback
-- 抽取 HTML `<select>` 與 `<table>` 區塊，方便檢查 DOM 結構
-- 附加 `logs/` 中的錯誤訊息，完整呈現執行過程
-
-### 使用方式
-在模組程式中加入以下範例：
-
-python
-
-from utils.debug_pipeline import debug_pipeline
-
-try:
-    run_f10_fetcher()
-except Exception as e:
-    snapshots = [
-        "raw/f10/f10_init_2025-11-27.html",
-        "raw/f10/f10_after_2025-11-27.html",
-        "raw/f10/f10_error_2025-11-27.html"
-    ]
-    log_file = "logs/f10_fetcher.log"
-
-    # 一鍵完成錯誤紀錄
-    debug_pipeline("F10", e, snapshots, log_file)
-
-輸出結果
-產生檔案：issues/YYYY-MM-DD_F10_error.md
-
-內容包含：
-錯誤摘要與 Traceback
-DOM  與  區塊
-log 錯誤訊息
-
-優點
-錯誤回報流程完全自動化
-
-Push 到 GitHub 後即可快速定位問題
-減少人工複製貼上，提高 Debug 效率
-
-程式碼
-
-----
-
-快速理解 `debug_pipeline.py` 的用途與操作方式。  
-
-
-
-📄 最新 README.md 範本
+📄 最終整合版 README.md
 markdown
 # Taifex-Debug 專案
 
@@ -63,8 +8,9 @@ markdown
 此專案用於自動化抓取台灣期交所 (TAIFEX) 各類金融指標 (F1–F20)，並保存原始快照、解析後資料與錯誤紀錄，方便後續 debug 與分析。  
 專案設計重視 **模組化、可維護性、錯誤回報自動化**，並結合 GitHub 版本控管，提升協作效率。
 
-----
+---
 
+## 專案結構
 
 ```
 Taifex-Debug/
@@ -88,9 +34,7 @@ Taifex-Debug/
 └── issues/                 # 錯誤紀錄 Markdown 檔案
     ├── 2025-11-27_f10_error.md
     └── 2025-11-28_f1_missing_table.md
-
 ```
-
 
 
 程式碼
@@ -160,32 +104,15 @@ issues/YYYY-MM-DD_module_error.md：錯誤紀錄
 
 bash
 pip install -r requirements.txt
-優點
-錯誤回報流程完全自動化
+推薦 Commit Message 格式
+為了版本控管清晰，建議使用以下格式：
 
-Push 到 GitHub 後即可快速定位問題
-
-減少人工複製貼上，提高 Debug 效率
-
-結構清楚，方便擴充與維護
-
+程式碼
+[錯誤紀錄] F10 TXO 表格載入失敗 - 2025-11-27
+[修正] F1 模組 selector 更新
+[新增] debug_pipeline.py 整合工具
 程式碼
 
 ---
-
-這份 `README.md` 已經整合了：  
-- 專案結構  
-- 子模組連結  
-- Debug Pipeline 使用方式  
-- 錯誤回報流程與範例  
-
-
-
-
-
-
-
-
-
 
 
