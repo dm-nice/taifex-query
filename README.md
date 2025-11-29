@@ -33,8 +33,7 @@ markdown
 專案設計重視 **模組化、可維護性、錯誤回報自動化**，並結合 GitHub 版本控管，提升協作效率。
 
 ---
-
-## 專案結構
+## 專案結構與用途
 
 ```
 Taifex-Debug/
@@ -54,31 +53,53 @@ Taifex-Debug/
 │   ├── log_parser.py            # 附加 log 錯誤訊息
 │   └── debug_pipeline.py        # 整合錯誤回報流程，一鍵生成 issues
 
-├── f1.py                        # F1 指標抓取程式
-├── f10_fetcher.py               # F10 指標抓取程式
-├── f20/                         # F20 模組目錄 (抓取程式與資料)
+├── fetchers/                    # F1–F20 抓取模組 (統一命名規範)
+│   ├── f01_fetcher.py           # F1 指標抓取程式
+│   ├── f02_fetcher.py           # F2 指標抓取程式
+│   ├── f03_fetcher.py           # F3 指標抓取程式
+│   ├── f04_fetcher.py           # F4 指標抓取程式
+│   ├── f05_fetcher.py           # F5 指標抓取程式
+│   ├── f06_fetcher.py           # F6 指標抓取程式
+│   ├── f07_fetcher.py           # F7 指標抓取程式
+│   ├── f08_fetcher.py           # F8 指標抓取程式
+│   ├── f09_fetcher.py           # F9 指標抓取程式
+│   ├── f10_fetcher.py           # F10 指標抓取程式
+│   ├── f11_fetcher.py           # F11 指標抓取程式
+│   ├── f12_fetcher.py           # F12 指標抓取程式
+│   ├── f13_fetcher.py           # F13 指標抓取程式
+│   ├── f14_fetcher.py           # F14 指標抓取程式
+│   ├── f15_fetcher.py           # F15 指標抓取程式
+│   ├── f16_fetcher.py           # F16 指標抓取程式
+│   ├── f17_fetcher.py           # F17 指標抓取程式
+│   ├── f18_fetcher.py           # F18 指標抓取程式
+│   ├── f19_fetcher.py           # F19 指標抓取程式
+│   └── f20_fetcher.py           # F20 指標抓取程式
 
-├── f8_api.py                    # F8 API 抓取程式
-├── f9_api.py                    # F9 API 抓取程式
-├── get_tx_foreign_oi.py         # 外資 OI API 抓取程式
-├── factors_taifex.py            # 指標計算 (因子分析)
+├── apis/                        # API 串接模組
+│   ├── f8_api.py                # F8 API 抓取程式
+│   ├── f9_api.py                # F9 API 抓取程式
+│   └── get_tx_foreign_oi.py     # 外資 OI API 抓取程式
 
-├── taifex_dom_foreign_simple.py       # 外資 DOM 簡化版
-├── taifex_dom_foreign_week.py         # 外資 DOM 週資料
-├── taifex_foreign_html.py             # 外資 HTML 抓取
-├── taifex_foreign_html_multi.py       # 外資 HTML 多頁抓取
-├── taifex_fullpage_screenshot.ocr.py  # 全頁截圖 + OCR 處理
+├── indicators/                  # 指標計算模組
+│   └── factors_taifex.py        # 指標計算 (因子分析)
 
-├── debug_f1.py                  # F1 模組除錯腳本
-├── debug_f2.py                  # F2 模組除錯腳本
-├── test_20.py                   # F20 測試腳本
-├── test_api.py                  # API 測試腳本
+├── visualize/                   # 視覺化模組 (折線圖、趨勢圖)
+│   ├── taifex_dom_foreign_simple.py       # 外資 DOM 簡化版
+│   ├── taifex_dom_foreign_week.py         # 外資 DOM 週資料
+│   ├── taifex_foreign_html.py             # 外資 HTML 抓取
+│   ├── taifex_foreign_html_multi.py       # 外資 HTML 多頁抓取
+│   └── taifex_fullpage_screenshot.ocr.py  # 全頁截圖 + OCR 處理
+
+├── tests/                       # 測試與除錯
+│   ├── debug_f1.py              # F1 模組除錯腳本
+│   ├── debug_f2.py              # F2 模組除錯腳本
+│   ├── test_20.py               # F20 測試腳本
+│   └── test_api.py              # API 測試腳本
 
 ├── data/                        # 解析後的資料存放
 ├── raw/                         # 原始快照 HTML
 ├── logs/                        # 執行紀錄 log
 ├── issues/                      # 錯誤紀錄 Markdown
-├── visualize/                   # 視覺化模組 (折線圖、趨勢圖)
 ├── factors/                     # 技術指標與因子模組
 ├── screenshot/                  # 執行過程截圖或 OCR 輸出
 ├── TEMP/                        # 暫存或未整合模組
@@ -87,7 +108,6 @@ Taifex-Debug/
 ├── .git/                        # Git 版本控制資料夾
 └── .github/                     # GitHub CI/CD 或專案設定
 ```
-
 
 
 
