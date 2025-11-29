@@ -16,7 +16,41 @@ markdown
 ### 使用方式
 在模組程式中加入以下範例：
 
+python
 
+from utils.debug_pipeline import debug_pipeline
+
+try:
+    run_f10_fetcher()
+except Exception as e:
+    snapshots = [
+        "raw/f10/f10_init_2025-11-27.html",
+        "raw/f10/f10_after_2025-11-27.html",
+        "raw/f10/f10_error_2025-11-27.html"
+    ]
+    log_file = "logs/f10_fetcher.log"
+
+    # 一鍵完成錯誤紀錄
+    debug_pipeline("F10", e, snapshots, log_file)
+輸出結果
+產生檔案：issues/YYYY-MM-DD_F10_error.md
+
+內容包含：
+
+錯誤摘要與 Traceback
+
+DOM <select> 與 <table> 區塊
+
+log 錯誤訊息
+
+優點
+錯誤回報流程完全自動化
+
+Push 到 GitHub 後即可快速定位問題
+
+減少人工複製貼上，提高 Debug 效率
+
+程式碼
 
 
 ```
