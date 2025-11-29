@@ -32,6 +32,7 @@ except Exception as e:
 
     # 一鍵完成錯誤紀錄
     debug_pipeline("F10", e, snapshots, log_file)
+
 輸出結果
 產生檔案：issues/YYYY-MM-DD_F10_error.md
 
@@ -39,16 +40,9 @@ except Exception as e:
 
 錯誤摘要與 Traceback
 
-DOM <select> 與 <table> 區塊
 
-log 錯誤訊息
 
-優點
-錯誤回報流程完全自動化
 
-Push 到 GitHub 後即可快速定位問題
-
-減少人工複製貼上，提高 Debug 效率
 
 程式碼
 
