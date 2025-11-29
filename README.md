@@ -1,8 +1,28 @@
-20251129 12:40
+20251129 13:25
 
 📄 最終整合版 README.md
 markdown
 # Taifex-Debug 專案
+
+## 目錄
+- [專案目的](#專案目的)
+- [專案結構](#專案結構)
+- [子模組說明](#子模組說明)
+- [錯誤回報流程](#錯誤回報流程)
+  - [Debug Pipeline 使用方式](#debug-pipeline)
+  - [檔案命名規則](#檔案命名規則)
+- [套件需求](#套件需求)
+  - [requirements.txt](#套件需求)
+  - [requirements-dev.txt](#requirements-devtxt)
+- [Commit Message 規範](#推薦-commit-message-格式)
+- [流程圖總覽](#流程圖總覽)
+  - [Commit 流程圖](#commit-流程圖)
+  - [開發流程圖](#開發流程圖)
+  - [專案總覽圖](#專案總覽圖)
+  - [錯誤回報流程圖](#錯誤回報流程圖)
+  - [資料流程圖](#資料流程圖)
+  - [專案維護流程圖](#專案維護流程圖)
+
 
 ## 專案目的
 此專案用於自動化抓取台灣期交所 (TAIFEX) 各類金融指標 (F1–F20)，並保存原始快照、解析後資料與錯誤紀錄，方便後續 debug 與分析。  
@@ -171,7 +191,174 @@ flowchart TD
 
 ---
 
+## 專案總覽圖
+
+```mermaid
+graph TD
+    subgraph Utils [utils/ 工具模組]
+        U1[error_reporter.py]
+        U2[html_cleaner.py]
+        U3[log_parser.py]
+        U4[debug_pipeline.py]
+    end
+
+    subgraph F1 [f1 模組]
+        F1A[f1_fetcher.py]
+    end
+
+    subgraph F10 [f10 模組]
+        F10A[f10_fetcher.py]
+    end
+
+    subgraph F20 [f20 模組]
+        F20A[f20_fetcher.py]
+    end
+
+    %% 關聯線
+    F1A --> U1
+    F1A --> U2
+    F1A --> U3
+    F1A --> U4
+
+    F10A --> U1
+    F10A --> U2
+    F10A --> U3
+    F10A --> U4
+
+    F20A --> U1
+    F20A --> U2
+    F20A --> U3
+    F20A --> U4
 
 
+---
+
+## ✅ 效果
+- 在 GitHub README 中會顯示一個 **Mermaid 圖表**  
+- 清楚展示：  
+  - `f1/f10/f20` 模組都依賴 `utils/` 工具模組  
+  - `debug_pipeline.py` 是核心，所有模組都會呼叫它來產生錯誤紀錄  
+
+---
+
+這樣你的 README 就同時有：
+- **Commit 流程圖**  
+- **開發流程圖**  
+- **專案總覽圖**  
+
+-------
+## 錯誤回報流程圖
+
+```mermaid
+flowchart TD
+    A[程式執行出錯] --> B[debug_pipeline.py 啟動]
+    B --> C[error_reporter.py 建立錯誤紀錄檔案]
+    B --> D[html_cleaner.py 抽取 <select>/<table> 區塊]
+    B --> E[log_parser.py 附加 log 錯誤訊息]
+    C --> F[產生 issues/YYYY-MM-DD_module_error.md]
+    D --> F
+    E --> F
+    F --> G[錯誤紀錄完成，推送到 GitHub]
+
+
+---
+
+## ✅ 效果
+- 在 GitHub README 中會顯示一個 **Mermaid 流程圖**  
+- 清楚展示：  
+  1. 程式出錯 → `debug_pipeline.py` 啟動  
+  2. 呼叫 `error_reporter.py` 建立錯誤紀錄  
+  3. 呼叫 `html_cleaner.py` 抽取 DOM 區塊  
+  4. 呼叫 `log_parser.py` 附加 log 訊息  
+  5. 最終產生 `.md` 錯誤紀錄檔，放到 `issues/`  
+
+---
+
+這樣你的 README 就同時有：
+- **Commit 流程圖**  
+- **開發流程圖**  
+- **專案總覽圖**  
+- **錯誤回報流程圖**  
+
+
+--------
+
+## 資料流程圖
+
+```mermaid
+flowchart LR
+    A[Fetcher.py 抓取資料] --> B[raw/ 原始快照]
+    B --> C[logs/ 執行紀錄]
+    C --> D[data/ 解析後資料]
+    D --> E{是否出錯?}
+    E -->|否| F[正常流程完成]
+    E -->|是| G[issues/ 錯誤紀錄 .md]
+    G --> H[推送到 GitHub]
+
+
+
+---
+
+## ✅ 效果
+- 在 GitHub README 中會顯示一個 **Mermaid 流程圖**  
+- 清楚展示資料流向：  
+  1. `fetcher.py` 抓取資料  
+  2. 存到 `raw/` 原始快照  
+  3. 產生 `logs/` 執行紀錄  
+  4. 解析後存到 `data/`  
+  5. 若出錯 → `issues/` 自動生成錯誤紀錄  
+  6. 最後推送到 GitHub  
+
+---
+
+這樣你的 README 就同時有：
+- **Commit 流程圖**  
+- **開發流程圖**  
+- **專案總覽圖**  
+- **錯誤回報流程圖**  
+- **資料流程圖**  
+
+---------
+
+## 專案維護流程圖
+
+```mermaid
+flowchart TD
+    A[程式執行出錯] --> B[debug_pipeline 產生 issues/ 錯誤紀錄]
+    B --> C[檢視錯誤紀錄並分析問題]
+    C --> D[修正程式碼]
+    D --> E[本地測試與驗證]
+    E --> F{測試是否通過?}
+    F -->|否| D
+    F -->|是| G[git add .]
+    G --> H[git commit -m "修正錯誤並更新模組"]
+    H --> I{pre-commit 檢查}
+    I -->|通過| J[git push 到 GitHub]
+    I -->|失敗| D
+    J --> K[更新 README.md 說明]
+    K --> L[專案維護完成]
+
+
+
+---
+
+## ✅ 效果
+- 在 GitHub README 中會顯示一個 **Mermaid 流程圖**  
+- 清楚展示完整維護週期：  
+  1. 程式出錯 → `debug_pipeline` 產生錯誤紀錄  
+  2. 分析錯誤並修正程式碼  
+  3. 測試驗證 → commit → pre-commit 檢查  
+  4. push 到 GitHub  
+  5. 更新 README.md 說明 → 維護完成  
+
+---
+
+這樣你的 README 就同時擁有：  
+- **Commit 流程圖**  
+- **開發流程圖**  
+- **專案總覽圖**  
+- **錯誤回報流程圖**  
+- **資料流程圖**  
+- **專案維護流程圖**  
 
 
