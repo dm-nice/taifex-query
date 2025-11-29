@@ -1,3 +1,4 @@
+```
 Taifex-Debug/
 ├── README.md               # 主專案說明
 ├── utils/                  # 共用工具模組
@@ -19,3 +20,5 @@ Taifex-Debug/
 └── issues/                 # 錯誤紀錄 Markdown 檔案
     ├── 2025-11-27_f10_error.md
     └── 2025-11-28_f1_missing_table.md
+
+```
