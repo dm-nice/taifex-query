@@ -1,3 +1,24 @@
+##2025.11.29 PM 12:21
+
+README 範例段落
+markdown
+## Debug Pipeline 使用說明
+
+為了提升錯誤回報與分析效率，本專案提供整合工具 `utils/debug_pipeline.py`。  
+此模組會在程式執行出錯時，自動產生完整的錯誤紀錄 Markdown 檔案，並存放於 `issues/` 目錄下。
+
+### 功能
+- 自動建立錯誤紀錄 `.md` 檔案
+- 紀錄錯誤摘要與完整 Traceback
+- 抽取 HTML `<select>` 與 `<table>` 區塊，方便檢查 DOM 結構
+- 附加 `logs/` 中的錯誤訊息，完整呈現執行過程
+
+### 使用方式
+在模組程式中加入以下範例：
+
+
+
+
 ```
 Taifex-Debug/
 ├── README.md               # 主專案說明
