@@ -42,6 +42,14 @@ except Exception as e:
 
 
 
+優點
+錯誤回報流程完全自動化
+
+Push 到 GitHub 後即可快速定位問題
+
+減少人工複製貼上，提高 Debug 效率
+
+
 
 
 程式碼
