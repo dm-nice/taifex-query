@@ -37,26 +37,33 @@ except Exception as e:
 產生檔案：issues/YYYY-MM-DD_F10_error.md
 
 內容包含：
-
 錯誤摘要與 Traceback
-
 DOM  與  區塊
-
 log 錯誤訊息
-
 
 優點
 錯誤回報流程完全自動化
 
 Push 到 GitHub 後即可快速定位問題
-
 減少人工複製貼上，提高 Debug 效率
-
-
-
 
 程式碼
 
+----
+
+快速理解 `debug_pipeline.py` 的用途與操作方式。  
+
+
+
+📄 最新 README.md 範本
+markdown
+# Taifex-Debug 專案
+
+## 專案目的
+此專案用於自動化抓取台灣期交所 (TAIFEX) 各類金融指標 (F1–F20)，並保存原始快照、解析後資料與錯誤紀錄，方便後續 debug 與分析。  
+專案設計重視 **模組化、可維護性、錯誤回報自動化**，並結合 GitHub 版本控管，提升協作效率。
+
+----
 
 
 
