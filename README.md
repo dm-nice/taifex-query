@@ -142,6 +142,36 @@ flowchart TD
   4. 通過才 push 到 GitHub  
 
 ---
+## 開發流程圖
+
+```mermaid
+flowchart TD
+    A[新增模組需求] --> B[建立模組目錄 (f1/f10/f20)]
+    B --> C[撰寫 fetcher.py 抓取程式]
+    C --> D[本地測試與除錯]
+    D --> E[debug_pipeline 自動產生 issues/ 錯誤紀錄]
+    E --> F[git add .]
+    F --> G[git commit -m "新增 F10 模組"]
+    G --> H{pre-commit 檢查}
+    H -->|通過| I[git push 到 GitHub]
+    H -->|失敗| J[修正程式碼並重新 commit]
+
+
+---
+
+## ✅ 效果
+- 在 GitHub README 中會顯示一個 **Mermaid 流程圖**  
+- 清楚展示完整開發週期：  
+  1. 新增模組需求  
+  2. 建立目錄並撰寫 `fetcher.py`  
+  3. 測試與除錯  
+  4. `debug_pipeline` 自動產生錯誤紀錄  
+  5. commit 前跑 pre-commit 檢查  
+  6. 通過才 push 到 GitHub  
+
+---
+
+
 
 
 
