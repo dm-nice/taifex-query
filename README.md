@@ -40,6 +40,7 @@ except Exception as e:
 
 錯誤摘要與 Traceback
 
+DOM <select> 與 <table> 區塊
 
 log 錯誤訊息
 
