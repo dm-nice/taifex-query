@@ -41,6 +41,8 @@ except Exception as e:
 錯誤摘要與 Traceback
 
 
+log 錯誤訊息
+
 
 優點
 錯誤回報流程完全自動化
