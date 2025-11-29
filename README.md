@@ -38,27 +38,65 @@ markdown
 
 ```
 Taifex-Debug/
-├── README.md               # 主專案說明
-├── utils/                  # 共用工具模組
-│   ├── error_reporter.py   # 自動產生錯誤紀錄
-│   ├── html_cleaner.py     # 抽取 <select>/<table> DOM 區塊
-│   ├── log_parser.py       # 附加 log 錯誤訊息
-│   └── debug_pipeline.py   # 整合版 Debug Pipeline
-├── f1/
-│   ├── f1_fetcher.py
-│   ├── raw/
-│   ├── logs/
-│   ├── data/
-│   └── README_f1.md
-├── f10/
-│   ├── f10_fetcher.py
-│   ├── raw/
-│   ├── logs/
-│   └── README_f10.md
-└── issues/                 # 錯誤紀錄 Markdown 檔案
-    ├── 2025-11-27_f10_error.md
-    └── 2025-11-28_f1_missing_table.md
+├── README.md                    # 專案總說明文件
+├── requirements.txt             # 執行環境套件需求
+├── requirements-dev.txt         # 開發環境套件需求 (測試/格式化/型別檢查)
+├── .gitignore                   # Git 忽略規則
+├── .pre-commit-config.yaml      # pre-commit 設定檔 (black/flake8/isort/mypy)
+
+├── run.py                       # 主程式入口，統一執行流程
+├── taifex_dashboard.py          # 儀表板整合，視覺化金融指標
+├── Taifex.txt                   # 臨時文字紀錄
+
+├── utils/                       # 共用工具模組
+│   ├── error_reporter.py        # 自動產生錯誤紀錄
+│   ├── html_cleaner.py          # 抽取 <select>/<table> DOM 區塊
+│   ├── log_parser.py            # 附加 log 錯誤訊息
+│   └── debug_pipeline.py        # 整合錯誤回報流程，一鍵生成 issues
+
+├── f1.py                        # F1 指標抓取程式
+├── f10_fetcher.py               # F10 指標抓取程式
+├── f20/                         # F20 模組目錄 (抓取程式與資料)
+
+├── f8_api.py                    # F8 API 抓取程式
+├── f9_api.py                    # F9 API 抓取程式
+├── get_tx_foreign_oi.py         # 外資 OI API 抓取程式
+├── factors_taifex.py            # 指標計算 (因子分析)
+
+├── taifex_dom_foreign_simple.py       # 外資 DOM 簡化版
+├── taifex_dom_foreign_week.py         # 外資 DOM 週資料
+├── taifex_foreign_html.py             # 外資 HTML 抓取
+├── taifex_foreign_html_multi.py       # 外資 HTML 多頁抓取
+├── taifex_fullpage_screenshot.ocr.py  # 全頁截圖 + OCR 處理
+
+├── debug_f1.py                  # F1 模組除錯腳本
+├── debug_f2.py                  # F2 模組除錯腳本
+├── test_20.py                   # F20 測試腳本
+├── test_api.py                  # API 測試腳本
+
+├── data/                        # 解析後的資料存放
+├── raw/                         # 原始快照 HTML
+├── logs/                        # 執行紀錄 log
+├── issues/                      # 錯誤紀錄 Markdown
+├── visualize/                   # 視覺化模組 (折線圖、趨勢圖)
+├── factors/                     # 技術指標與因子模組
+├── screenshot/                  # 執行過程截圖或 OCR 輸出
+├── TEMP/                        # 暫存或未整合模組
+├── venv32/                      # Python 虛擬環境 (32bit)
+├── __pycache__/                 # Python 編譯快取
+├── .git/                        # Git 版本控制資料夾
+└── .github/                     # GitHub CI/CD 或專案設定
 ```
+
+
+
+
+
+
+
+
+
+
 
 「專案狀態徽章」
 
