@@ -1,0 +1,16 @@
+# 測試框架
+pytest>=7.4.3              # 單元測試與整合測試
+pytest-cov>=4.1.0          # 測試覆蓋率報告
+
+# 程式碼品質檢查
+flake8>=6.1.0              # 程式碼風格檢查
+mypy>=1.7.1                # 型別檢查 (Python type hints)
+
+# 程式碼格式化
+black>=23.11.0             # 自動程式碼格式化
+isort>=5.12.0              # 自動排序 import
+
+# 開發輔助工具
+pre-commit>=3.5.0          # Git pre-commit hooks 管理
+ipython>=8.17.2            # 互動式 Python shell
+jupyter>=1.0.0             # Notebook 開發與測試

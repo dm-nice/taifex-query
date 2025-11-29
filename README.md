@@ -115,4 +115,33 @@ pip install -r requirements.txt
 
 ---
 
+## Commit 流程圖
+
+```mermaid
+flowchart TD
+    A[程式執行出錯] --> B[debug_pipeline 自動產生 issues/ 錯誤紀錄]
+    B --> C[git add .]
+    C --> D[git commit -m "錯誤紀錄 F10 - 2025-11-27"]
+    D --> E{pre-commit 檢查}
+    E -->|通過| F[git push 到 GitHub]
+    E -->|失敗| G[修正程式碼並重新 commit]
+
+
+-------------------
+
+
+
+---
+
+## ✅ 效果
+- 在 GitHub README 中會顯示一個 **Mermaid 流程圖**  
+- 清楚展示完整流程：  
+  1. 程式出錯  
+  2. `debug_pipeline` 自動產生錯誤紀錄  
+  3. commit 前跑 pre-commit 檢查  
+  4. 通過才 push 到 GitHub  
+
+---
+
+
 
