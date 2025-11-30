@@ -1,13 +1,20 @@
 """
-f01_fetcher.py
-F1 指標：台指期貨外資淨口數 (OI)
-資料來源：台灣期貨交易所 (TAIFEX)
+F1 模組需求
+- 指標名稱：台指期貨外資淨口數 (Open Interest, OI)
+- 資料來源：台灣期貨交易所 (TAIFEX) 官方網站
+- 需抓取欄位：外資淨口數
+- 輸入：date (YYYY-MM-DD)
+- 輸出：dict 格式，符合 interface_spec.md 規範
 
-我們要的資料格式如下：
-F1: 台指期貨外資淨口數 (OI): [請填入數值]（來源：TAIFEX）
+---
 
-程式邏輯：
-foreign_net = 外資多單口數 - 外資空單口數
+成功輸出範例：
+{
+    "module": "f01",
+    "date": "YYYY-MM-DD",
+    "status": "success",
+    "summary": "F1: 台指期貨外資淨口數 (OI): [請填入數值]（來源：TAIFEX）"
+}
 
 ---
 
@@ -23,13 +30,13 @@ foreign_net = 外資多單口數 - 外資空單口數
 
 錯誤訊息撰寫建議：
 - 欄位不存在：
-  "找不到欄位 '交易人名稱'，df.columns = ['交易人', '多單口數', '空單口數']"
-- 數值轉換失敗：
-  "無法轉換 '多單口數' 為整數，原始值為 '8,123'"
+  "找不到欄位 '外資淨口數'"
 - 網頁結構異常：
   "TAIFEX 網頁表格解析失敗，無法取得第一個表格"
 - 無資料可抓取：
   "該日無交易資料，TAIFEX 回傳空表格"
+
+
 """
 
 import requests
@@ -104,3 +111,5 @@ def fetch(date: str) -> dict:
 if __name__ == "__main__":
     result = fetch("2025-11-28")
     print(result)
+
+
