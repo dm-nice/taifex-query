@@ -56,39 +56,85 @@ def fetch(date: str) -> dict:
         # 轉成 DataFrame
         df = pd.read_html(resp.text)[0]
 
-        # 確認欄位名稱
-        trader_col = None
-        for col in ["交易人名稱", "交易人", "交易人代號"]:
-            if col in df.columns:
-                trader_col = col
-                break
-        if trader_col is None:
-            raise ValueError(f"找不到交易人欄位，df.columns = {list(df.columns)}")
+        # 處理多層欄位（pandas 會將多層欄位名稱轉為 tuple）
+        # 先將欄位名稱扁平化
+        if isinstance(df.columns, pd.MultiIndex):
+            # 欄位是多層的，需要特殊處理
+            # 尋找包含 "身份別" 的欄位
+            trader_col = None
+            for col in df.columns:
+                if '身份別' in str(col):
+                    trader_col = col
+                    break
+            
+            if trader_col is None:
+                raise ValueError(f"找不到身份別欄位，df.columns = {list(df.columns)}")
+            
+            # 篩選外資
+            foreign = df[df[trader_col] == "外資"]
+            
+            if len(foreign) == 0:
+                raise ValueError("該日無外資交易資料")
+            
+            # 尋找未平倉餘額欄位（多方和空方）
+            long_col = None
+            short_col = None
+            
+            for col in df.columns:
+                col_str = str(col)
+                # 找未平倉餘額 > 多方 > 口數
+                if '未平倉餘額' in col_str and '多方' in col_str and '口數' in col_str:
+                    long_col = col
+                # 找未平倉餘額 > 空方 > 口數
+                if '未平倉餘額' in col_str and '空方' in col_str and '口數' in col_str:
+                    short_col = col
+            
+            if long_col is None or short_col is None:
+                raise ValueError(f"找不到未平倉口數欄位")
+            
+            # 數值轉換工具
+            def to_int(val):
+                if pd.isna(val):
+                    return 0
+                return int(str(val).replace(",", "").strip())
+            
+            foreign_long = to_int(foreign[long_col].values[0])
+            foreign_short = to_int(foreign[short_col].values[0])
+            foreign_net = foreign_long - foreign_short
+        else:
+            # 欄位是單層的，使用原本的邏輯
+            trader_col = None
+            for col in ["交易人名稱", "交易人", "身份別"]:
+                if col in df.columns:
+                    trader_col = col
+                    break
+            if trader_col is None:
+                raise ValueError(f"找不到交易人欄位，df.columns = {list(df.columns)}")
 
-        # 篩選外資
-        foreign = df[df[trader_col] == "外資"]
+            # 篩選外資
+            foreign = df[df[trader_col] == "外資"]
 
-        # 數值轉換工具
-        def to_int(val):
-            return int(str(val).replace(",", "").strip())
+            # 數值轉換工具
+            def to_int(val):
+                return int(str(val).replace(",", "").strip())
 
-        # 確認數值欄位
-        long_col = None
-        for col in ["多單口數", "多方未平倉口數"]:
-            if col in df.columns:
-                long_col = col
-                break
-        short_col = None
-        for col in ["空單口數", "空方未平倉口數"]:
-            if col in df.columns:
-                short_col = col
-                break
-        if long_col is None or short_col is None:
-            raise ValueError(f"找不到多單/空單欄位，df.columns = {list(df.columns)}")
+            # 確認數值欄位
+            long_col = None
+            for col in ["多單口數", "多方未平倉口數", "多方"]:
+                if col in df.columns:
+                    long_col = col
+                    break
+            short_col = None
+            for col in ["空單口數", "空方未平倉口數", "空方"]:
+                if col in df.columns:
+                    short_col = col
+                    break
+            if long_col is None or short_col is None:
+                raise ValueError(f"找不到多單/空單欄位，df.columns = {list(df.columns)}")
 
-        foreign_long = to_int(foreign[long_col].values[0])
-        foreign_short = to_int(foreign[short_col].values[0])
-        foreign_net = foreign_long - foreign_short
+            foreign_long = to_int(foreign[long_col].values[0])
+            foreign_short = to_int(foreign[short_col].values[0])
+            foreign_net = foreign_long - foreign_short
 
         # 組合輸出
         summary = f"F1: 台指期貨外資淨口數 (OI): {foreign_net}（來源：TAIFEX）"
