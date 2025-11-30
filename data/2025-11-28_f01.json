@@ -1,0 +1,31 @@
+{
+  "module": "f01",
+  "date": "2025-11-28",
+  "status": "success",
+  "data": {
+    "foreign_long": 8000,
+    "foreign_short": 6800,
+    "foreign_net": 1200,
+    "china_long": 1500,
+    "china_short": 1700,
+    "china_net": -200
+  }
+}
+
+
+說明
+檔名規範：data/YYYY-MM-DD_module.json
+
+內容結構：
+
+module → 模組名稱 (例如 f01)
+
+date → 執行日期
+
+status → 成功 (success) 或失敗 (fail)
+
+data → 抓取到的指標資料 (dict 格式)
+
+產生方式：由 run.py 主程式自動建立，外包協作者只要正確回傳 dict，主程式就會存成 JSON
+
+這樣一來，外包協作者就能對照 成功檔案 (data/) 和 失敗檔案 (issues/)，清楚知道驗收標準。
