@@ -134,11 +134,16 @@ Taifex/
 ├── run.py                     # 主程式，統一呼叫 F01–F20
 ├── taifex_dashboard.py        # 儀表板整合程式
 │
-├── fetchers/                  # F01–F20 抓取模組
+├── fetchers/          # 正式模組 (驗收後才放這裡)
 │   ├── f01_fetcher.py
 │   ├── f02_fetcher.py
-│   ├── ...
-│   └── f20_fetcher.py
+│   └── ...
+│
+├── outsource/         # 外包回來待驗收的模組
+│   ├── f01_fetcher_outsource.py
+│   ├── f02_fetcher_outsource.py
+│   └── ...
+│
 │
 ├── docs/                      # 文件專區
 │   ├── interface_spec.md      # 模組介面規範 (完整文件)
@@ -155,18 +160,6 @@ Taifex/
 ├── data/                      # 成功抓取的資料
 ├── logs/                      # 執行紀錄
 └── issues/                    # 錯誤紀錄 (Markdown)
-
-
-
-```
-
-
-
-
-
-
-
-
 
 
 

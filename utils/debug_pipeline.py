@@ -49,7 +49,7 @@ if __name__ == "__main__":
     path = report_error("f01", "2025-11-28", "測試錯誤：連線失敗")
     print(f"錯誤紀錄已建立: {path}")
 
-
+"""
 ===============================
 
 效果
@@ -60,6 +60,7 @@ if __name__ == "__main__":
 可獨立測試：直接執行 python utils/debug_pipeline.py 就能測試錯誤紀錄功能
 
 run.py 呼叫 report_error(...) 時，就能自動把錯誤紀錄存到 issues/。
+"""
 
 
 

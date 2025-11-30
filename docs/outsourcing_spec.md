@@ -7,7 +7,7 @@
 ---
 
 ## 工作範圍
-- 撰寫指定模組 (例如 F01)，放置於 `fetchers/` 目錄下。
+- 撰寫指定模組 (例如 F01)，放置於 `outsource/` 目錄下。
 - 模組需依照 `docs/interface_spec.md` 規範設計：
   - 統一介面：`fetch(date: str) -> dict`
   - 統一回傳格式：成功 / 失敗
@@ -18,7 +18,6 @@
 ## F1 模組需求
 - **指標名稱**：台指期貨外資及陸資淨口數 (Open Interest, OI)  
 - **資料來源**：台灣期貨交易所 (TAIFEX) 官方網站  
-- **網頁位置**：每日交易統計 → 外資及陸資 OI 報表  
 - **需抓取欄位**：
   - 外資多單口數  
   - 外資空單口數  
@@ -31,14 +30,15 @@
 
 ---
 
-## 交付內容
-1. **程式碼**
-   - 例如：`fetchers/f01_fetcher.py`
-   - 必須能獨立執行測試 (`python f01_fetcher.py`)
-2. **文件**
-   - 若有特殊需求或額外欄位，需補充在 `docs/interface_spec.md` 或附加說明
-3. **測試結果**
-   - 提供至少一個測試日期的執行結果 (JSON dict)
+## 外包交付檔名規範
+- **交付目錄**：請放在 `outsource/` 子目錄，不要直接放到 `fetchers/`  
+- **檔名格式**：`fXX_fetcher_dev.py`  
+  - 例如：`f01_fetcher_dev.py`、`f10_fetcher_dev.py`  
+- **驗收流程**：
+  1. 外包交付 → 放在 `outsource/`  
+  2. 測試時 → 使用 `run_test.py` 指向 `outsource/` 裡的檔案  
+  3. 驗收成功 → 改名並移到 `fetchers/`，取代骨架  
+  4. 驗收失敗 → 保留在 `outsource/`，並在 `issues/` 留下錯誤紀錄  
 
 ---
 
@@ -68,8 +68,10 @@
 
 ---
 
-## 注意事項
-- 請勿修改主程式 `run.py`，僅需完成模組。  
-- 請遵守 `docs/interface_spec.md` 與 `docs/architecture.md` 文件規範。  
-- 若資料來源不足，請提出需求，我方會補充。  
+## Log 格式規範 (僅供內部參考)
+> ⚠️ 此章節僅供我們自己檢查，外包人員不用處理 log 檔案。
+
+主程式 `run.py` 會自動產生執行紀錄檔 `logs/YYYY-MM-DD_run.log`，格式如下：
+
+
 
