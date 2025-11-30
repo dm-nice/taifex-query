@@ -10,6 +10,8 @@ markdown
 
 ## 專案結構
 
+```
+
 Taifex/
 ├── outsource/              # 外包程式放這裡
 │   └── f01_fetcher_dev.py
@@ -19,6 +21,7 @@ Taifex/
 │   └── architecture.md     # 系統架構 (內部參考)
 ├── run_test.py             # 驗收測試主程式
 
+```
 
 ---
 
