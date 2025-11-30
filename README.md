@@ -1,14 +1,29 @@
-20251130 07:00
+20251130 08:20
 
 本專案使用 [Mermaid](https://mermaid-js.github.io/) 流程圖語法，請在 GitHub 上開啟「顯示流程圖」功能以正確呈現。
+
+# Taifex 專案
 
 ## 專案簡介
 Taifex-Debug 是一個模組化的金融資料抓取與分析專案，支援 F1–F20 指標、API 串接、視覺化與錯誤回報。  
 主程式 (`run.py`) 統一呼叫各模組，並自動將結果分流到 `data/`、`logs/`、`issues/`。
 
+## 專案目的
+此專案用於自動化抓取台灣期交所 (TAIFEX) 各類金融指標 (F1–F20)，並保存原始快照、解析後資料與錯誤紀錄，方便後續 debug 與分析。  
+專案設計重視 **模組化、可維護性、錯誤回報自動化**，並結合 GitHub 版本控管，提升協作效率。
+
+
+## 專案用途
+本專案用於 **抓取台灣期交所 (TAIFEX) 與台灣證交所 (TWSE)** 各類金融指標，並進行模組化的資料分析與視覺化。  
+透過每日自動化流程，將期貨、選擇權、現貨等指標統一收集，並分流至 `data/`、`logs/`、`issues/` 目錄，方便後續分析與回溯。
+
+---
+
+
+
+===========================================
 📄 最終整合版 README.md
-markdown
-# Taifex-Debug 專案
+
 
 ## 目錄
 - [專案目的](#專案目的)
@@ -30,9 +45,6 @@ markdown
   - [專案維護流程圖](#專案維護流程圖)
 
 
-## 專案目的
-此專案用於自動化抓取台灣期交所 (TAIFEX) 各類金融指標 (F1–F20)，並保存原始快照、解析後資料與錯誤紀錄，方便後續 debug 與分析。  
-專案設計重視 **模組化、可維護性、錯誤回報自動化**，並結合 GitHub 版本控管，提升協作效率。
 
 ---
 ## 專案結構與用途
@@ -113,29 +125,38 @@ Taifex-Debug/
 
 ===============================================
 ## 專案結構
+
 ```
-Taifex-Debug/
-├── README.md
-├── run.py
-├── taifex_dashboard.py
+
+Taifex/
+├── README.md                  # 專案簡介與使用說明
+├── requirements.txt           # 依賴套件清單
+├── run.py                     # 主程式，統一呼叫 F01–F20
+├── taifex_dashboard.py        # 儀表板整合程式
 │
-├── fetchers/                  # F1–F20 抓取模組
+├── fetchers/                  # F01–F20 抓取模組
 │   ├── f01_fetcher.py
 │   ├── f02_fetcher.py
-│   └── ...
+│   ├── ...
+│   └── f20_fetcher.py
 │
 ├── docs/                      # 文件專區
 │   ├── interface_spec.md      # 模組介面規範 (完整文件)
 │   └── architecture.md        # 專案結構與用途 (可選)
 │
 ├── utils/                     # 共用工具模組
-├── apis/                      # API 模組
+│   └── debug_pipeline.py      # 錯誤回報工具
+│
+├── apis/                      # API 模組 (如外部資料串接)
 ├── indicators/                # 指標計算模組
-├── visualize/                 # 視覺化模組
+├── visualize/                 # 視覺化模組 (圖表/報表)
 ├── tests/                     # 測試模組
-├── data/                      # 成功資料
+│
+├── data/                      # 成功抓取的資料
 ├── logs/                      # 執行紀錄
-└── issues/                    # 錯誤紀錄
+└── issues/                    # 錯誤紀錄 (Markdown)
+
+
 ```
 
 「專案狀態徽章」
@@ -182,15 +203,24 @@ Taifex-Debug/
 - 抽取 HTML `<select>` 與 `<table>` 區塊  
 - 附加 `logs/` 中的錯誤訊息  
 
+---------
+
+## 文件索引
+- [docs/interface_spec.md](docs/interface_spec.md) → **模組介面規範**，定義輸入/輸出格式與錯誤回報方式  
+- [docs/architecture.md](docs/architecture.md) → **專案架構說明**，解釋目錄分層與用途  
+
+---
+
 ## 使用方式
 1. 安裝依賴：
-   ```bash
+    
    pip install -r requirements.txt
-   ```
+   
+
 2. 執行主程式：
-   ```bash
+    
    python run.py
-   ```
+ 
 
 
 
@@ -439,12 +469,16 @@ flowchart TD
 
 ---
 
-這樣你的 README 就同時擁有：  
+README 就同時擁有：  
 - **Commit 流程圖**  
 - **開發流程圖**  
 - **專案總覽圖**  
 - **錯誤回報流程圖**  
 - **資料流程圖**  
 - **專案維護流程圖**  
+
+=============================================
+
+
 
 
