@@ -1,10 +1,12 @@
 """
 run_test.py
 專門用來驗收 outsource/ 子目錄下的外包模組
+支援命令列輸入日期，未輸入則預設為今日
 """
 
 import importlib
 import os
+import sys
 import json
 from datetime import datetime
 from utils.debug_pipeline import report_error
@@ -46,6 +48,11 @@ def run(date: str):
 
 
 if __name__ == "__main__":
-    today = datetime.now().strftime("%Y-%m-%d")
-    run(today)
-    print(f"驗收測試完成，請查看 logs/{today}_run_test.log")
+    # ✅ 支援命令列輸入日期，未輸入則預設今日
+    if len(sys.argv) > 1:
+        date = sys.argv[1]
+    else:
+        date = datetime.now().strftime("%Y-%m-%d")
+
+    run(date)
+    print(f"驗收測試完成，請查看 logs/{date}_run_test.log")

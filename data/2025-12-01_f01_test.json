@@ -2,5 +2,12 @@
   "module": "f01",
   "date": "2025-12-01",
   "status": "success",
-  "summary": "F1: 台指期貨外資淨口數 (OI): -26321（來源：TAIFEX）"
+  "data": {
+    "foreign_long": 18268,
+    "foreign_short": 47300,
+    "foreign_net": -29032,
+    "china_long": null,
+    "china_short": null,
+    "china_net": null
+  }
 }

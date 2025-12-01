@@ -1,7 +1,7 @@
 """
 run.py
-主程式整合範例（目前只執行 f01）
-統一呼叫模組並依結果自動分流到 data/、logs/、issues/
+主程式：執行所有模組並分流結果
+支援命令列輸入日期，預設為今日
 """
 
 import os
@@ -14,7 +14,7 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-# ✅ 匯入 f01 模組（其他模組尚未驗收，暫不匯入）
+# ✅ 匯入模組（目前只執行 f01）
 from fetchers.f01_fetcher import fetch as f01
 
 # ✅ 工具模組（錯誤回報）
@@ -37,7 +37,7 @@ def save_to_logs(module, date, message):
         f.write(f"[{datetime.now()}] {message}\n")
 
 def main(date: str):
-    modules = [("f01", f01)]  # ✅ 目前只執行 f01
+    modules = [("f01", f01)]  # ✅ 可擴充模組清單
 
     results = []
 
@@ -63,6 +63,12 @@ def main(date: str):
     return results
 
 if __name__ == "__main__":
-    # 範例：執行 2025-11-28 的資料抓取
-    data = main("2025-11-28")
+    # ✅ 支援命令列輸入日期，預設為今日
+    if len(sys.argv) > 1:
+        date = sys.argv[1]
+    else:
+        date = datetime.today().strftime("%Y-%m-%d")
+
+    data = main(date)
     print(json.dumps(data, ensure_ascii=False, indent=2))
+
