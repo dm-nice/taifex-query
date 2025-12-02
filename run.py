@@ -60,18 +60,39 @@ def to_int_safe(val):
 
 def build_flat_record(date, result, module_name, status_override=None):
     d = result.get("data", {}) if isinstance(result, dict) else {}
+
+    def safe_get(key):
+        val = d.get(key)
+        if val is None or str(val).strip() == "":
+            return "-"
+        return to_int_safe(val)
+
+    long_val = safe_get("外資多方口數")
+    short_val = safe_get("外資空方口數")
+    net_val = safe_get("外資多空淨額")
+
+    # 如果 long/short 都是 "-"，則 net 也強制為 "-"
+    if long_val == "-" and short_val == "-":
+        net_val = "-"
+
     return {
         "日期": date,
-        "外資多方口數": to_int_safe(d.get("外資多方口數")),
-        "外資空方口數": to_int_safe(d.get("外資空方口數")),
-        "外資多空淨額": to_int_safe(d.get("外資多空淨額")),
+        "外資多方口數": long_val,
+        "外資空方口數": short_val,
+        "外資多空淨額": net_val,
         "source": result.get("source", "-") if isinstance(result, dict) else "-",
         "status": status_override or (result.get("status", "invalid") if isinstance(result, dict) else "invalid"),
         "module": result.get("module", module_name.split(".")[-1]) if isinstance(result, dict) else module_name.split(".")[-1]
     }
 
 def format_row(record):
-    return "\t".join(str(record.get(field, "-")) for field in FIELDS)
+    # 固定欄寬，確保標題與資料對齊
+    widths = [12, 12, 12, 12, 10, 10, 8]
+    row = []
+    for field, width in zip(FIELDS, widths):
+        val = str(record.get(field, "-"))
+        row.append(val.ljust(width))
+    return " ".join(row)
 
 def get_module_list(folder: str, only_module: str = None):
     files = [f for f in os.listdir(folder) if f.endswith(".py") and not f.startswith("_")]
@@ -95,27 +116,21 @@ def run(query_date: str, dev_mode: bool, only_module: str = None):
 
     with open(log_file, "a", encoding="utf-8") as log:
         log.write(f"\n=== 查詢日期: {query_date} ｜ 執行日期: {exec_time} ｜ 模式: {mode} ===\n")
-        log.write("\t".join(FIELDS) + "\n")
+        log.write(format_row({f: f for f in FIELDS}) + "\n")  # 標題行
 
         for module_name in get_module_list(folder, only_module):
-            log.write(f"[START] {module_name}\n")
-
             try:
                 mod = importlib.import_module(module_name)
                 result = mod.fetch(query_date)
 
                 if not isinstance(result, dict) or "status" not in result:
-                    log.write(f"[INVALID] {module_name} → 無效回傳格式\n")
                     record = build_flat_record(query_date, result, module_name, status_override="invalid")
                     invalid_count += 1
                 else:
                     record = build_flat_record(query_date, result, module_name)
                     if result["status"] == "success":
-                        log.write(f"[SUCCESS] {module_name}\n")
                         success_count += 1
                     else:
-                        log.write(f"[FAIL] {module_name}\n")
-                        log.write(f"錯誤訊息：{result.get('error','未知錯誤')}\n")
                         fail_count += 1
 
                 # ✅ 寫入 JSON（使用執行日命名）
@@ -123,19 +138,25 @@ def run(query_date: str, dev_mode: bool, only_module: str = None):
                 data_file = f"data/{exec_day}_{record['module']}{suffix}.json"
                 with open(data_file, "w", encoding="utf-8") as f:
                     json.dump(record, f, ensure_ascii=False, indent=2)
-                log.write(f"[WRITE] 已寫入資料檔案：{data_file}\n")
+
+                # ✅ 先寫平坦資料，再寫狀態
                 log.write(format_row(record) + "\n")
+                log.write(f"[START] {module_name}\n")
+                log.write(f"[{record['status'].upper()}] {module_name}\n")
+                log.write(f"[WRITE] 已寫入資料檔案：{data_file}\n")
 
             except Exception as e:
-                log.write(f"[ERROR] {module_name}\n")
-                log.write(f"錯誤訊息 (Traceback)：{format_traceback(e)}\n")
                 record = build_flat_record(query_date, {}, module_name, status_override="error")
                 suffix = "_dev" if dev_mode else ""
                 data_file = f"data/{exec_day}_{record['module']}{suffix}.json"
                 with open(data_file, "w", encoding="utf-8") as f:
                     json.dump(record, f, ensure_ascii=False, indent=2)
-                log.write(f"[WRITE] 已寫入資料檔案：{data_file}\n")
+
                 log.write(format_row(record) + "\n")
+                log.write(f"[START] {module_name}\n")
+                log.write(f"[ERROR] {module_name}\n")
+                log.write(f"錯誤訊息 (Traceback)：{format_traceback(e)}\n")
+                log.write(f"[WRITE] 已寫入資料檔案：{data_file}\n")
                 error_count += 1
 
         log.write("\n=== 驗收統計 ===\n")
@@ -150,9 +171,4 @@ if __name__ == "__main__":
     dev_mode = len(args) > 1 and args[1].lower() == "dev"
     only_module = None
     if "--module" in args:
-        idx = args.index("--module")
-        if idx + 1 < len(args):
-            only_module = args[idx + 1]
-
-    run(query_date, dev_mode, only_module)
-    print(f"執行完成，請查看 logs/{datetime.now().strftime('%Y-%m-%d')}_run{'_dev' if dev_mode else ''}.log")
+        idx = args
