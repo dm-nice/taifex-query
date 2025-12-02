@@ -1,12 +1,7 @@
 """
 run.py
-主程式整合範例
-統一呼叫 F1–F20 模組，並依結果自動分流到 data/、logs/、issues/
-
-自動分流：成功 → data/，失敗 → issues/，一般紀錄 → logs/
-模組統一呼叫：所有 F1–F20 都照 fetch(date) 規範執行
-錯誤自動回報：失敗或例外會呼叫 debug_pipeline.py，產生 Markdown 錯誤紀錄
-可擴充：未來增加 F21–F30，只要加到 fetchers/ 並匯入即可
+主程式：執行所有模組並分流結果
+支援命令列輸入日期，預設為今日
 """
 
 import os
@@ -19,29 +14,10 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-# 匯入 F01–F20 模組
+# ✅ 匯入模組（目前只執行 f01）
 from fetchers.f01_fetcher import fetch as f01
-from fetchers.f02_fetcher import fetch as f02
-from fetchers.f03_fetcher import fetch as f03
-from fetchers.f04_fetcher import fetch as f04
-from fetchers.f05_fetcher import fetch as f05
-from fetchers.f06_fetcher import fetch as f06
-from fetchers.f07_fetcher import fetch as f07
-from fetchers.f08_fetcher import fetch as f08
-from fetchers.f09_fetcher import fetch as f09
-from fetchers.f10_fetcher import fetch as f10
-from fetchers.f11_fetcher import fetch as f11
-from fetchers.f12_fetcher import fetch as f12
-from fetchers.f13_fetcher import fetch as f13
-from fetchers.f14_fetcher import fetch as f14
-from fetchers.f15_fetcher import fetch as f15
-from fetchers.f16_fetcher import fetch as f16
-from fetchers.f17_fetcher import fetch as f17
-from fetchers.f18_fetcher import fetch as f18
-from fetchers.f19_fetcher import fetch as f19
-from fetchers.f20_fetcher import fetch as f20
 
-# 工具模組 (錯誤回報)
+# ✅ 工具模組（錯誤回報）
 from utils.debug_pipeline import report_error
 
 # 建立目錄
@@ -61,12 +37,7 @@ def save_to_logs(module, date, message):
         f.write(f"[{datetime.now()}] {message}\n")
 
 def main(date: str):
-    modules = [
-        ("f01", f01), ("f02", f02), ("f03", f03), ("f04", f04), ("f05", f05),
-        ("f06", f06), ("f07", f07), ("f08", f08), ("f09", f09), ("f10", f10),
-        ("f11", f11), ("f12", f12), ("f13", f13), ("f14", f14), ("f15", f15),
-        ("f16", f16), ("f17", f17), ("f18", f18), ("f19", f19), ("f20", f20),
-    ]
+    modules = [("f01", f01)]  # ✅ 可擴充模組清單
 
     results = []
 
@@ -92,6 +63,12 @@ def main(date: str):
     return results
 
 if __name__ == "__main__":
-    # 範例：執行 2025-11-28 的資料抓取
-    data = main("2025-11-28")
+    # ✅ 支援命令列輸入日期，預設為今日
+    if len(sys.argv) > 1:
+        date = sys.argv[1]
+    else:
+        date = datetime.today().strftime("%Y-%m-%d")
+
+    data = main(date)
     print(json.dumps(data, ensure_ascii=False, indent=2))
+

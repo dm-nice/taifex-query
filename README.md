@@ -79,6 +79,61 @@ python run_test.py
 
 ---
 
-📌 這樣外包商一打開 GitHub repo，就能在 README.md 找到「外包開發指南」，並且知道要看哪份文件、要交付什麼程式、怎麼驗收。  
+📌 外包商一打開 GitHub repo，就能在 README.md 找到「外包開發指南」，並且知道要看哪份文件、要交付什麼程式、怎麼驗收。  
 
-要不要我再幫你設計一個 **外包專用分支流程**（例如 `outsourcing
+============================================================================
+📂 README.md 範例內容
+markdown
+# 專案說明
+
+本專案主要透過 `run.py` 統一呼叫各模組（如 f01），並將結果落地到 `data/` 與 `logs/` 目錄。以下說明執行流程與關鍵設計。
+
+---
+
+### 執行流程：run.py → f01
+1. 使用者執行：
+   ```bash
+   python run.py 2025-12-01 dev --module f01_fetcher_dev_xxx
+run.py 透過 importlib.import_module() 載入指定模組（例如 dev/f01_fetcher_dev_xxx.py）。
+
+呼叫模組的 fetch(date) 函式，並將查詢日期傳入。
+
+模組回傳一個 dict，包含 status、module、source 與 data 欄位。
+
+run.py 接收後的處理
+檢查回傳格式是否正確（必須是 dict 且含有 status）。
+
+呼叫 build_flat_record()，將模組回傳的 dict 轉換成「平坦化資料」。
+
+寫入檔案：
+
+JSON → data/{執行日}_{模組}.json 或 data/{執行日}_{模組}_dev.json
+
+Log → logs/{執行日}_run.log 或 logs/{執行日}_run_dev.log
+
+Log 檔案中會記錄：
+
+[START] / [SUCCESS] / [FAIL] / [ERROR] / [INVALID]
+
+一行平坦資料（TSV 格式），方便人工檢視。
+
+關鍵點
+模組責任：外包商依照規範書撰寫 fetch()，負責抓取資料並回傳 dict。
+
+run.py 責任：驗收模組回傳 → 平坦化 → 落地 JSON 與 log。
+
+資料一致性：不管成功或失敗，run.py 都會寫入一筆 JSON 與一行 log，確保每次執行都有紀錄。
+
+平坦化設計：同一行包含多項欄位（日期、數值、來源、狀態、模組），方便後續分析。
+
+程式碼
+
+---
+
+📌  README.md 就能清楚交代 **執行流程 → 接收處理 → 關鍵點**，外包商或團隊成員一看就懂。  
+
+
+
+
+
+
