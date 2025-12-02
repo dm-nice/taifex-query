@@ -2,60 +2,100 @@
 
 README.md 範例
 markdown
-# Taifex 指標自動化專案
-
+Taifex 指標自動化專案
 本專案用於自動化抓取台灣期貨交易所 (TAIFEX) 的每日指標資料，並統一輸出格式，方便後續分析與儀表板展示。
 
----
+📂 專案結構
+text
+C:\Taifex\
+├── run.py                  # 主控程式，執行模組並集中輸出 JSON 與 log 到 data/
+├── run_test.py             # 驗收測試用，可單獨執行指定模組
+├── run_bak.py              # 舊版備份，可保留比對或刪除
+├── README.md               # 專案說明文件
+├── .pre-commit-config.yaml # Git pre-commit 設定（格式化、lint 等）
+├── .gitignore              # 排除 venv、log、data 等不需 commit 的檔案
+│
+├── data\                   # 所有執行結果集中輸出目錄（由 run.py 控制）
+│   ├── YYYY-MM-DD_f01.json
+│   ├── YYYY-MM-DD_run.log
+│   ├── YYYY-MM-DD_f01_dev.json
+│   ├── YYYY-MM-DD_run_dev.log
+│   └── ...
+│
+├── dev\                    # 驗收模組目錄，外包商交付放這裡
+│   ├── f01_fetcher_dev.py
+│   └── ...
+│
+├── modules\                # 正式模組目錄，驗收通過後移入
+│   ├── f01_fetcher.py
+│   └── ...
+│
+├── utils\                  # 工具模組（供 run.py 或模組引用）
+│   ├── debug_pipeline.py   # run.py 用來格式化錯誤訊息
+│   ├── __init__.py         # 套件初始化，讓 utils 可被 import
+│   └── __pycache__\        # Python 快取目錄，自動產生可忽略
+│
+├── TEMP\                   # 暫存資料夾，可排除版本控管
+├── venv32\                 # Python 虛擬環境（32bit）
+├── .github\                # GitHub CI/CD 或 issue template 可放這裡
+└── .git\                   # Git 版本控管資料夾（勿動）
+⚙️ 執行流程
+使用者執行：
 
-## 專案結構
+bash
+python run.py 2025-12-01 dev --module f01_fetcher_dev_xxx
+run.py 透過 importlib.import_module() 載入指定模組（例如 dev/f01_fetcher_dev_xxx.py）。
 
-```
+呼叫模組的 fetch(date) 函式，並將查詢日期傳入。
 
-Taifex/
-├── outsource/              # 外包程式放這裡
-│   └── f01_fetcher_dev.py
-├── docs/                   # 說明文件
-│   ├── interface_spec.md   # 模組輸入/輸出規範
-│   ├── outsourcing_spec.md # 各指標需求與來源
-│   └── architecture.md     # 系統架構 (內部參考)
-├── run_test.py             # 驗收測試主程式
+模組回傳一個 dict，包含 status、module、source 與 data 欄位。
 
-```
+run.py 接收後的處理：
 
----
+檢查回傳格式是否正確（必須是 dict 且含有 status）。
 
-## 外包開發指南
+呼叫 build_flat_record()，將模組回傳的 dict 轉換成「平坦化資料」。
 
-外包商需依照以下流程開發並交付模組：
+寫入檔案：
 
-### 1. 文件參考
-- 📘 [docs/interface_spec.md](docs/interface_spec.md)：定義模組輸入輸出格式與錯誤回報規範  
-- 📘 [docs/outsourcing_spec.md](docs/outsourcing_spec.md)：各指標資料來源與欄位說明（例如 F1）
+JSON → data/{執行日}_{模組}.json 或 data/{執行日}_{模組}_dev.json
 
-### 2. 開發規範
-- 請在 `outsource/` 目錄下建立對應模組檔案，例如：
-outsource/f01_fetcher_dev.py
+Log → data/{執行日}_run.log 或 data/{執行日}_run_dev.log
+
+Log 檔案中會記錄：
+
+[START] / [SUCCESS] / [FAIL] / [ERROR] / [INVALID]
+
+一行平坦資料（TSV 格式），方便人工檢視。
+
+📘 外包開發指南
+1. 文件參考
+docs/interface_spec.md：定義模組輸入輸出格式與錯誤回報規範
+
+docs/outsourcing_spec.md：各指標資料來源與欄位說明（例如 F1）
+
+2. 開發規範
+請在 dev/ 目錄下建立對應模組檔案，例如：
 
 程式碼
-- 程式需提供函式：
-```python
+dev/f01_fetcher_dev.py
+程式需提供函式：
+
+python
 def fetch(date: str) -> dict
 成功輸出範例：
-
 json
 {
   "module": "f01",
-  "date": "2025-11-30",
+  "date": "2025-12-01",
   "status": "success",
   "summary": "F1: 台指期貨外資淨口數 (OI): 1334（來源：TAIFEX）"
 }
 失敗輸出範例：
-
 json
 {
   "module": "f01",
-  "date": "2025-11-30",
+  "date": "2025-12-01",
   "status": "fail",
   "error": "找不到欄位 '交易人名稱'，df.columns = ['交易人', '多單口數', '空單口數']"
 }
@@ -63,23 +103,10 @@ json
 執行：
 
 bash
-python run_test.py
+python run.py 2025-12-01 dev
 成功時會產生 data/ 下的 JSON 檔案
 
-失敗時會產生 issues/ 下的錯誤紀錄
-
-注意事項
-所有模組需符合 interface_spec.md 定義的格式
-
-錯誤訊息需具體，方便 debug
-
-程式需能處理 TAIFEX 欄位名稱可能的變動（例如「交易人名稱」改成「交易人」）
-
-程式碼
-
----
-
-📌 外包商一打開 GitHub repo，就能在 README.md 找到「外包開發指南」，並且知道要看哪份文件、要交付什麼程式、怎麼驗收。  
+失敗時會產生 data/ 下的錯誤紀錄（log 檔案中有詳細訊息）
 
 ============================================================================
 📂 README.md 範例內容
