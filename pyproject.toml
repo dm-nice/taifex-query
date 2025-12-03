@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "taifex-query"
+version = "0.1.0"
+description = "Taifex query automation tool"
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+requests = "^2.31.0"
+pandas = "^2.1.0"
+pydantic = "^2.5.0"
+pydantic-settings = "^2.1.0"
+lxml = "^4.9.0"  # for pandas read_html
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+black = "^23.9.0"
+isort = "^5.12.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
