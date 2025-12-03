@@ -8,9 +8,10 @@
 抓取 **台指期貨 (TX) 當日收盤價 (Day N Close)**。
 
 ## 📂 交付檔案
-請依照以下命名規則建立檔案：
+請依照以下命名規則建立檔案，並將其放置於**本目錄 (與本規格書相同目錄)**：
 - **檔名**: `f14_fetcher_dev.py`
 - **MODULE 變數**: `"f14_fetcher_dev"`
+- **存放位置**: 請直接存放在本目錄下 (即 `f14_package/` 根目錄)
 
 ## 📊 資料來源規格
 - **URL**: `https://www.taifex.com.tw/cht/3/futDailyMarketReport`

@@ -4,6 +4,11 @@ F14 Fetcher 開發模組
 此模組負責抓取台指期貨 (TX) 當日收盤價。
 """
 
+import sys
+import os
+# 將專案根目錄加入 sys.path
+sys.path.append("C:\\Taifex")
+
 from modules.base import BaseFetcher, FetchResult
 
 MODULE = "f14_fetcher_dev"
