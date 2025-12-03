@@ -11,7 +11,7 @@ import requests
 import pandas as pd
 import json
 
-MODULE = "f01"
+MODULE = "f01_fetcher"
 
 
 def fetch(date: str) -> dict:
