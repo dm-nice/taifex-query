@@ -35,17 +35,26 @@ def fetch(date: str) -> dict:
             # 找到身份別(或稱身份)欄位
             trader_col = None
             for col in df.columns:
-                if '身份別' in str(col) or '身份' in str(col):
+                # col 是一個 tuple，例如 ('Unnamed: 2_level_0', '身份別')
+                # 我們檢查 tuple 中是否有包含 '身份別' 的字串
+                if any('身份別' in str(c) for c in col):
                     trader_col = col
                     break
+            
             if trader_col is None:
                 return {"module": MODULE, "date": date, "status": "fail", "error": "找不到身份別欄位"}
 
-            # 篩選外資
-            foreign_rows = df[df[trader_col] == '外資']
+            # 篩選外資 (注意：台指期通常顯示為 '外資及陸資')
+            # 先印出所有身份別以供除錯 (正式版可移除)
+            # print(f"身份別列表: {df[trader_col].unique()}")
+
+            foreign_rows = df[df[trader_col] == '外資及陸資']
+            if len(foreign_rows) == 0:
+                # 嘗試找 '外資'
+                foreign_rows = df[df[trader_col] == '外資']
             
             if len(foreign_rows) == 0:
-                return {"module": MODULE, "date": date, "status": "fail", "error": "該日無外資交易資料"}
+                return {"module": MODULE, "date": date, "status": "fail", "error": f"該日無外資交易資料 (欄位: {trader_col})"}
 
             # 尋找未平倉餘額 > 多方 > 口數 與 未平倉餘額 > 空方 > 口數
             long_col = None
@@ -70,8 +79,8 @@ def fetch(date: str) -> dict:
             f_net = f_long - f_short
             
             data = {
-                "外資多單口數": f_long,
-                "外資空單口數": f_short,
+                "外資多方口數": f_long,
+                "外資空方口數": f_short,
                 "外資多空淨額": f_net
             }
             
@@ -128,8 +137,8 @@ def fetch(date: str) -> dict:
             f_net = f_long - f_short
             
             data = {
-                "外資多單口數": f_long,
-                "外資空單口數": f_short,
+                "外資多方口數": f_long,
+                "外資空方口數": f_short,
                 "外資多空淨額": f_net
             }
             
