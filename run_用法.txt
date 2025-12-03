@@ -1,0 +1,39 @@
+PowerShell 7.5.4
+PS C:\Windows\System32> cd C:\Taifex
+PS C:\Taifex> .\venv32\Scripts\Activate.ps1
+(venv32) PS C:\Taifex> python run.py --help
+
+===========================================================
+ run.py  —  模組統一執行程式 (集中輸出到 data/)
+===========================================================
+
+【用途】
+- 執行指定查詢日期的模組，並將結果寫入 C:\Taifex\data- 不管成功或失敗，皆會寫入一筆 JSON 檔案到 data/
+- log 檔案也寫在 data/，與 JSON 同目錄
+- 終端機即時顯示執行進度
+
+【用法】
+  python run.py [查詢日期] [模式] [--module 模組名稱]
+
+【範例】
+  python run.py 2025-12-01 dev
+  python run.py 2025-12-01
+  python run.py 2025-12-01 dev --module f01_fetcher_dev
+  python run.py --help
+===========================================================
+
+
+使用範例:
+  python run.py                           # 執行今天日期
+  python run.py 2025-12-01                # 執行指定日期
+  python run.py 2025-12-01 dev            # 驗收模式
+  python run.py 2025-12-01 dev --module f01_fetcher_dev
+
+
+===========================================================
+
+# 在 run.py 中執行
+python run.py 2025-11-28 dev --module f01_fetcher
+
+# 獨立測試
+python f01_fetcher.py 2025-11-28
