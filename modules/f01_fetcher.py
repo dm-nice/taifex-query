@@ -1,328 +1,376 @@
 """
-===========================================================
- run.py  —  模組統一執行程式 (集中輸出到 data/)
-===========================================================
+f01_fetcher.py
+台指期貨外資未平倉淨口數抓取模組
 
-【用途】
-- 執行指定查詢日期的模組，並將結果寫入 C:\Taifex\data\
-- 不管成功或失敗，皆會寫入一筆 JSON 檔案到 data/
-- log 檔案也寫在 data/，與 JSON 同目錄
-- 終端機即時顯示執行進度
-
-【用法】
-  python run.py [查詢日期] [模式] [--module 模組名稱]
-
-【範例】
-  python run.py 2025-12-01 dev
-  python run.py 2025-12-01
-  python run.py 2025-12-01 dev --module f01_fetcher_dev
-===========================================================
+功能：
+- 從 TAIFEX 網站抓取台指期貨外資未平倉資料
+- 提供 fetch(date: str) -> dict 統一介面
+- 支援 MultiIndex 和單層表頭兩種格式
+- 完整錯誤處理和日誌記錄
 """
 
-import os
 import sys
 import json
 import logging
-import importlib
+import requests
+import pandas as pd
+from typing import Dict, Optional
 from datetime import datetime
-from pathlib import Path
-from typing import List, Dict, Optional
 
-# ===== 設定 =====
-BASE_DIR = Path(r"C:\Taifex\data")
-LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
-DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+# 模組識別
+MODULE_ID = "f01"
+MODULE_NAME = "f01_fetcher"
 
-# ===== 日誌設定 =====
-def setup_logger(log_file: Path, dev_mode: bool) -> logging.Logger:
-    """設定日誌記錄器"""
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    
-    # 清除現有 handlers
-    logger.handlers.clear()
-    
-    # 檔案 handler
-    file_handler = logging.FileHandler(log_file, encoding='utf-8')
-    file_handler.setLevel(logging.INFO)
-    file_formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
-    file_handler.setFormatter(file_formatter)
-    
-    # 終端機 handler
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.INFO)
-    console_formatter = logging.Formatter('%(message)s')
-    console_handler.setFormatter(console_formatter)
-    
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
-    
-    return logger
+# 設定 logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
-def get_module_list(folder: str, only_module: Optional[str] = None) -> List[str]:
+def convert_to_int(value) -> int:
     """
-    取得模組列表
+    將字串轉換為整數，處理千分位逗號和空值
     
     Args:
-        folder: 模組資料夾 ('dev' 或 'modules')
-        only_module: 僅執行特定模組名稱
+        value: 待轉換的值
         
     Returns:
-        模組名稱列表
+        整數值，無法轉換時返回 0
     """
+    if pd.isna(value):
+        return 0
     try:
-        folder_path = Path(folder)
-        if not folder_path.exists():
-            return []
-        
-        files = [f for f in os.listdir(folder) 
-                if f.endswith(".py") and not f.startswith("_")]
-        modules = [f"{folder}.{f[:-3]}" for f in files]
-        
-        if only_module:
-            modules = [m for m in modules if m.endswith(only_module)]
-        
-        return sorted(modules)
-    except Exception as e:
-        print(f"⚠️  取得模組列表失敗: {e}")
-        return []
+        return int(str(value).replace(',', '').strip())
+    except (ValueError, AttributeError):
+        return 0
 
 
-def save_result(result: Dict, module_name: str, exec_day: str, dev_mode: bool) -> Path:
+def find_column_multiindex(df: pd.DataFrame, keywords: list) -> Optional[tuple]:
     """
-    儲存執行結果到 JSON 檔案
+    在 MultiIndex 欄位中尋找包含特定關鍵字的欄位
     
     Args:
-        result: 模組執行結果
-        module_name: 模組名稱
-        exec_day: 執行日期
-        dev_mode: 是否為驗收模式
+        df: DataFrame
+        keywords: 關鍵字列表
         
     Returns:
-        JSON 檔案路徑
+        找到的欄位 tuple，找不到返回 None
     """
-    suffix = "_dev" if dev_mode else ""
-    module_short = module_name.split(".")[-1]
-    data_file = BASE_DIR / f"{exec_day}_{module_short}{suffix}.json"
-    
-    with open(data_file, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
-    
-    return data_file
+    for col in df.columns:
+        col_str = ''.join(str(c) for c in col)
+        if all(keyword in col_str for keyword in keywords):
+            return col
+    return None
 
 
-def execute_module(module_name: str, query_date: str, logger: logging.Logger) -> Dict:
+def find_column_single(df: pd.DataFrame, possible_names: list) -> Optional[str]:
     """
-    執行單一模組
+    在單層欄位中尋找可能的欄位名稱
     
     Args:
-        module_name: 模組完整名稱
-        query_date: 查詢日期
-        logger: 日誌記錄器
+        df: DataFrame
+        possible_names: 可能的欄位名稱列表
         
     Returns:
-        執行結果字典
+        找到的欄位名稱，找不到返回 None
     """
-    module_short = module_name.split(".")[-1]
+    for name in possible_names:
+        if name in df.columns:
+            return name
+    return None
+
+
+def extract_foreign_data_multiindex(df: pd.DataFrame, date: str) -> Dict:
+    """
+    從 MultiIndex 表格中提取外資資料
     
-    try:
-        logger.info(f"[執行] {module_name}")
+    Args:
+        df: MultiIndex DataFrame
+        date: 查詢日期
         
-        # 動態載入模組
-        mod = importlib.import_module(module_name)
-        
-        # 檢查是否有 fetch 函式
-        if not hasattr(mod, 'fetch'):
-            return {
-                "date": query_date,
-                "module": module_short,
-                "status": "error",
-                "error": "模組缺少 fetch() 函式",
-                "data": {},
-                "source": "-"
-            }
-        
-        # 執行 fetch
-        result = mod.fetch(query_date)
-        
-        # 驗證返回格式
-        if not isinstance(result, dict):
-            return {
-                "date": query_date,
-                "module": module_short,
-                "status": "invalid",
-                "error": "fetch() 返回格式不正確 (應為 dict)",
-                "data": {},
-                "source": "-"
-            }
-        
-        # 驗證必要欄位
-        if "狀態" not in result:
-            return {
-                "date": query_date,
-                "module": module_short,
-                "status": "invalid",
-                "error": "返回結果缺少 '狀態' 欄位",
-                "data": {},
-                "source": "-"
-            }
-        
-        # 正規化狀態名稱
-        status_map = {
-            "成功": "success",
-            "失敗": "failed",
-            "錯誤": "error"
-        }
-        result["status"] = status_map.get(result.get("狀態", ""), "unknown")
-        
-        return result
-        
-    except ImportError as e:
-        logger.error(f"[錯誤] 無法載入模組 {module_name}: {e}")
+    Returns:
+        結果字典
+    """
+    # 尋找身份別欄位
+    trader_col = None
+    for col in df.columns:
+        if any('身份別' in str(c) or '身份' in str(c) for c in col):
+            trader_col = col
+            break
+    
+    if trader_col is None:
         return {
-            "date": query_date,
-            "module": module_short,
-            "status": "error",
-            "error": f"模組載入失敗: {str(e)}",
-            "data": {},
-            "source": "-"
+            "module": MODULE_ID,
+            "date": date,
+            "status": "failed",
+            "error": "找不到身份別欄位"
         }
     
-    except Exception as e:
-        logger.exception(f"[例外] 執行 {module_name} 時發生錯誤")
+    # 篩選外資（可能是「外資及陸資」或「外資」）
+    foreign_rows = df[df[trader_col].isin(['外資及陸資', '外資'])]
+    
+    if len(foreign_rows) == 0:
+        available_traders = df[trader_col].unique().tolist()
         return {
-            "date": query_date,
-            "module": module_short,
-            "status": "error",
-            "error": str(e),
-            "data": {},
-            "source": "-"
+            "module": MODULE_ID,
+            "date": date,
+            "status": "failed",
+            "error": f"找不到外資資料，可用身份別: {available_traders}"
+        }
+    
+    # 尋找未平倉多方口數欄位
+    long_col = find_column_multiindex(df, ['未平倉', '多方', '口'])
+    short_col = find_column_multiindex(df, ['未平倉', '空方', '口'])
+    
+    if long_col is None or short_col is None:
+        return {
+            "module": MODULE_ID,
+            "date": date,
+            "status": "failed",
+            "error": "找不到未平倉餘額的多/空口數欄位"
+        }
+    
+    # 提取數據
+    try:
+        long_pos = convert_to_int(foreign_rows[long_col].values[0])
+        short_pos = convert_to_int(foreign_rows[short_col].values[0])
+        net_pos = long_pos - short_pos
+        
+        summary = f"台指期外資淨額 {net_pos:,} 口（多方 {long_pos:,}，空方 {short_pos:,}）"
+        
+        return {
+            "module": MODULE_ID,
+            "date": date,
+            "status": "success",
+            "summary": summary,
+            "data": {
+                "long_position": long_pos,
+                "short_position": short_pos,
+                "net_position": net_pos
+            },
+            "source": "TAIFEX"
+        }
+        
+    except (IndexError, KeyError) as e:
+        return {
+            "module": MODULE_ID,
+            "date": date,
+            "status": "failed",
+            "error": f"資料提取失敗: {str(e)}"
         }
 
 
-def run(query_date: str, dev_mode: bool = False, only_module: Optional[str] = None):
+def extract_foreign_data_single(df: pd.DataFrame, date: str) -> Dict:
     """
-    主執行函式
+    從單層欄位表格中提取外資資料
     
     Args:
-        query_date: 查詢日期 (YYYY-MM-DD)
-        dev_mode: 是否為驗收模式
-        only_module: 僅執行特定模組
+        df: 單層欄位 DataFrame
+        date: 查詢日期
+        
+    Returns:
+        結果字典
     """
-    # 建立輸出目錄
-    BASE_DIR.mkdir(parents=True, exist_ok=True)
+    # 尋找身份別欄位
+    trader_col = find_column_single(
+        df, 
+        ['身份別', '身份', '交易人', '交易人名稱', '身分別']
+    )
     
-    # 設定參數
-    folder = "dev" if dev_mode else "modules"
-    mode = "驗收模式" if dev_mode else "正式模式"
-    exec_day = datetime.now().strftime("%Y-%m-%d")
-    exec_time = datetime.now().strftime(DATE_FORMAT)
+    if trader_col is None:
+        return {
+            "module": MODULE_ID,
+            "date": date,
+            "status": "failed",
+            "error": f"找不到身份別欄位，可用欄位: {df.columns.tolist()}"
+        }
     
-    # 設定日誌
-    log_file = BASE_DIR / f"{exec_day}_run{'_dev' if dev_mode else ''}.log"
-    logger = setup_logger(log_file, dev_mode)
+    # 篩選外資
+    foreign_rows = df[df[trader_col].isin(['外資及陸資', '外資'])]
     
-    # 統計計數器
-    stats = {
-        "success": 0,
-        "failed": 0,
-        "error": 0,
-        "invalid": 0
-    }
+    if len(foreign_rows) == 0:
+        available_traders = df[trader_col].unique().tolist()
+        return {
+            "module": MODULE_ID,
+            "date": date,
+            "status": "failed",
+            "error": f"找不到外資資料，可用身份別: {available_traders}"
+        }
     
-    # 開始執行
-    logger.info("=" * 60)
-    logger.info(f"查詢日期: {query_date} | 執行時間: {exec_time} | 模式: {mode}")
-    logger.info("=" * 60)
+    # 尋找多方和空方口數欄位
+    long_col = find_column_single(
+        df,
+        ['未平倉餘額-多方-口數', '多方-口數', '多方口數', '多方', '多單口數']
+    )
+    short_col = find_column_single(
+        df,
+        ['未平倉餘額-空方-口數', '空方-口數', '空方口數', '空方', '空單口數']
+    )
     
-    # 取得模組列表
-    modules = get_module_list(folder, only_module)
+    if long_col is None or short_col is None:
+        return {
+            "module": MODULE_ID,
+            "date": date,
+            "status": "failed",
+            "error": f"找不到多/空口數欄位，可用欄位: {df.columns.tolist()}"
+        }
     
-    if not modules:
-        logger.warning(f"⚠️  在 {folder}/ 資料夾中找不到任何模組")
-        return
-    
-    logger.info(f"找到 {len(modules)} 個模組待執行\n")
-    
-    # 執行各模組
-    for module_name in modules:
-        # 執行模組
-        result = execute_module(module_name, query_date, logger)
-        
-        # 更新統計
-        status = result.get("status", "unknown")
-        stats[status] = stats.get(status, 0) + 1
-        
-        # 儲存結果
-        try:
-            data_file = save_result(result, module_name, exec_day, dev_mode)
-            logger.info(f"[{status.upper()}] {module_name} → {data_file.name}")
-            
-            # 顯示摘要（如果有）
-            if "摘要" in result and result["摘要"]:
-                logger.info(f"  📊 {result['摘要']}")
-            elif "錯誤" in result:
-                logger.info(f"  ❌ {result['錯誤']}")
-            
-        except Exception as e:
-            logger.error(f"[儲存失敗] {module_name}: {e}")
-        
-        logger.info("")  # 空行分隔
-    
-    # 輸出統計
-    logger.info("=" * 60)
-    logger.info("執行統計")
-    logger.info("=" * 60)
-    logger.info(f"✅ 成功模組數: {stats['success']}")
-    logger.info(f"⚠️  失敗模組數: {stats['failed']}")
-    logger.info(f"❌ 錯誤模組數: {stats['error']}")
-    logger.info(f"⛔ 無效模組數: {stats['invalid']}")
-    logger.info(f"📝 詳細紀錄: {log_file}")
-    logger.info("=" * 60)
-
-
-def validate_date(date_str: str) -> bool:
-    """驗證日期格式"""
+    # 提取數據
     try:
-        datetime.strptime(date_str, "%Y-%m-%d")
-        return True
+        long_pos = convert_to_int(foreign_rows.iloc[0][long_col])
+        short_pos = convert_to_int(foreign_rows.iloc[0][short_col])
+        net_pos = long_pos - short_pos
+        
+        summary = f"台指期外資淨額 {net_pos:,} 口（多方 {long_pos:,}，空方 {short_pos:,}）"
+        
+        return {
+            "module": MODULE_ID,
+            "date": date,
+            "status": "success",
+            "summary": summary,
+            "data": {
+                "long_position": long_pos,
+                "short_position": short_pos,
+                "net_position": net_pos
+            },
+            "source": "TAIFEX"
+        }
+        
+    except (IndexError, KeyError) as e:
+        return {
+            "module": MODULE_ID,
+            "date": date,
+            "status": "failed",
+            "error": f"資料提取失敗: {str(e)}"
+        }
+
+
+def fetch(date: str) -> dict:
+    """
+    抓取指定日期的台指期貨外資未平倉資料
+    
+    Args:
+        date: 日期字串 (YYYY-MM-DD)
+        
+    Returns:
+        結果字典，格式:
+        {
+            "module": "f01",
+            "date": "2025-12-01",
+            "status": "success|failed|error",
+            "summary": "摘要訊息（中文）",
+            "data": {...},
+            "source": "TAIFEX"
+        }
+    """
+    # 驗證日期格式
+    try:
+        date_obj = datetime.strptime(date, "%Y-%m-%d")
     except ValueError:
-        return False
+        return {
+            "module": MODULE_ID,
+            "date": date,
+            "status": "error",
+            "error": "日期格式錯誤，請使用 YYYY-MM-DD"
+        }
+    
+    # 轉換日期格式為 TAIFEX 格式
+    url_date = date.replace('-', '/')
+    url = f"https://www.taifex.com.tw/cht/3/futContractsDate?queryType=1&marketCode=0&date={url_date}"
+    
+    try:
+        # 發送 HTTP 請求
+        logger.info(f"正在抓取 {date} 的資料...")
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+        response.encoding = "utf-8"
+        
+        # 解析 HTML 表格
+        tables = pd.read_html(response.text)
+        
+        if len(tables) == 0:
+            return {
+                "module": MODULE_ID,
+                "date": date,
+                "status": "failed",
+                "error": "該日無交易資料（可能是假日或休市日）"
+            }
+        
+        # 取得第一個表格（通常是主要資料表）
+        df = tables[0]
+        
+        # 根據表格類型處理
+        if isinstance(df.columns, pd.MultiIndex):
+            logger.debug("偵測到 MultiIndex 表頭")
+            return extract_foreign_data_multiindex(df, date)
+        else:
+            logger.debug("偵測到單層表頭")
+            return extract_foreign_data_single(df, date)
+    
+    except requests.Timeout:
+        return {
+            "module": MODULE_ID,
+            "date": date,
+            "status": "error",
+            "error": "連線逾時，請檢查網路連線"
+        }
+    
+    except requests.HTTPError as e:
+        return {
+            "module": MODULE_ID,
+            "date": date,
+            "status": "error",
+            "error": f"HTTP 錯誤 {e.response.status_code}"
+        }
+    
+    except requests.RequestException as e:
+        return {
+            "module": MODULE_ID,
+            "date": date,
+            "status": "error",
+            "error": f"網路請求失敗: {str(e)}"
+        }
+    
+    except ValueError as e:
+        return {
+            "module": MODULE_ID,
+            "date": date,
+            "status": "error",
+            "error": f"HTML 解析失敗: {str(e)}"
+        }
+    
+    except Exception as e:
+        logger.exception("未預期的錯誤")
+        return {
+            "module": MODULE_ID,
+            "date": date,
+            "status": "error",
+            "error": f"未預期的錯誤: {str(e)}"
+        }
 
 
 def main():
-    """主程式進入點"""
-    args = sys.argv[1:]
+    """主程式進入點，供獨立測試使用"""
+    if len(sys.argv) > 1:
+        test_date = sys.argv[1]
+    else:
+        # 預設測試日期
+        test_date = '2025-11-28'
     
-    # 解析參數
-    query_date = args[0] if len(args) > 0 else datetime.now().strftime("%Y-%m-%d")
-    dev_mode = len(args) > 1 and args[1].lower() == "dev"
-    only_module = None
+    print(f"測試日期: {test_date}")
+    print("-" * 60)
     
-    if "--module" in args:
-        idx = args.index("--module")
-        if idx + 1 < len(args):
-            only_module = args[idx + 1]
+    result = fetch(test_date)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
     
-    # 驗證日期
-    if not validate_date(query_date):
-        print(f"❌ 日期格式錯誤: {query_date}")
-        print("請使用 YYYY-MM-DD 格式，例如: 2025-12-01")
-        sys.exit(1)
-    
-    # 執行
-    try:
-        run(query_date, dev_mode, only_module)
-    except KeyboardInterrupt:
-        print("\n⚠️  執行被使用者中斷")
-        sys.exit(1)
-    except Exception as e:
-        print(f"❌ 執行失敗: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+    # 根據狀態設定退出碼
+    sys.exit(0 if result.get("status") == "success" else 1)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

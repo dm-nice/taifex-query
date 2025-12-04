@@ -1,8 +1,12 @@
 {
-  "模組": "f01_fetcher",
-  "日期": "2025-12-02",
-  "狀態": "錯誤",
-  "錯誤": "模組缺少 fetch() 函式",
-  "資料": {},
-  "來源": "-"
+  "module": "f01",
+  "date": "2025-12-02",
+  "status": "success",
+  "summary": "台指期外資淨額 -29,224 口（多方 18,808，空方 48,032）",
+  "data": {
+    "long_position": 18808,
+    "short_position": 48032,
+    "net_position": -29224
+  },
+  "source": "TAIFEX"
 }
