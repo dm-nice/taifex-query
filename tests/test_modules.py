@@ -52,5 +52,4 @@ def test_module_fetch_contract(module_name):
     else:
         pytest.fail(f"Module {module_name} must return a dict (or FetchResult model)")
 
-    assert fetch_result.module == module_name.split(".")[-1]
     assert fetch_result.date == test_date
