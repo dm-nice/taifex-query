@@ -7,15 +7,6 @@ f01_fetcher.py
 - 提供 fetch(date: str) -> dict 統一介面
 - 支援 MultiIndex 和單層表頭兩種格式
 - 完整錯誤處理和日誌記錄
-
-【當前限制】
-- 本模組使用的 futContractsDate API 端點無視日期參數
-- 無論查詢哪一天，都只返回最後交易日的資料
-- 若要支援歷史日期查詢，需要使用 Selenium 或其他完整瀏覽器自動化工具
-
-【使用方式】
-- 調用 fetch(date) 方法，但返回的永遠是最後交易日的資料
-- 若要查詢特定日期，需要改用其他資料來源或升級至 Selenium 版本
 """
 
 import sys
@@ -287,16 +278,14 @@ def fetch(date: str) -> dict:
     
     # 轉換日期格式為 TAIFEX 格式
     url_date = date.replace('-', '/')
-    # 使用原始的 futContractsDate 端點（已驗證能正確工作）
     url = f"https://www.taifex.com.tw/cht/3/futContractsDate?queryType=1&marketCode=0&date={url_date}"
     
     try:
         # 發送 HTTP 請求
         logger.info(f"正在抓取 {date} 的資料...")
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
-        
         response = requests.get(url, headers=headers, timeout=30)
         response.raise_for_status()
         response.encoding = "utf-8"

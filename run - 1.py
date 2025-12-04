@@ -159,7 +159,7 @@ def validate_result_format(result: Dict, module_name: str, query_date: str) -> T
 
 def save_result(result: Dict, module_name: str, exec_day: str, dev_mode: bool) -> Path:
     """
-    儲存執行結果到檔案（自動格式化）
+    儲存執行結果到 JSON 檔案
     
     Args:
         result: 執行結果
@@ -168,33 +168,12 @@ def save_result(result: Dict, module_name: str, exec_day: str, dev_mode: bool) -
         dev_mode: 是否為驗收模式
         
     Returns:
-        檔案路徑
+        JSON 檔案路徑
     """
     suffix = "_dev" if dev_mode else ""
     module_short = module_name.split(".")[-1]
     data_file = BASE_DIR / f"{exec_day}_{module_short}{suffix}.json"
     
-    # 如果是成功的 f01 模組，使用自訂格式
-    if result.get("status") == "success" and module_short == "f01_fetcher":
-        try:
-            query_date = result.get("date", "")
-            date_formatted = query_date.replace("-", ".")  # 轉換 2025-12-03 -> 2025.12.03
-            net_pos = result.get("data", {}).get("net_position", 0)
-            long_pos = result.get("data", {}).get("long_position", 0)
-            short_pos = result.get("data", {}).get("short_position", 0)
-            source = result.get("source", "TAIFEX")
-            
-            # 自訂格式: [ 2025.12.03  F01台指期外資淨額 -29,224 口（多方 18,808，空方 48,032）   source: TAIFEX ]
-            custom_output = f"[ {date_formatted}  F01台指期外資淨額 {net_pos:,} 口（多方 {long_pos:,}，空方 {short_pos:,}）   source: {source} ]"
-            
-            with open(data_file, "w", encoding="utf-8") as f:
-                f.write(custom_output)
-            
-            return data_file
-        except Exception as e:
-            logger.warning(f"無法套用自訂格式: {e}，改用 JSON 格式")
-    
-    # 預設使用 JSON 格式
     with open(data_file, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
     
