@@ -1,0 +1,171 @@
+{
+  "project": {
+    "name": "台指期貨20因子預測系統",
+    "description": "基於20個市場因子分析台指期貨隔日漲跌趨勢的預測系統",
+    "version": "1.0.0",
+    "architecture": "模組化設計 - 主程式呼叫獨立功能模組",
+    "target_audience": "Python 初學者也能理解和維護"
+  },
+
+  "python": {
+    "version": "3.9+",
+    "style_guide": "PEP 8",
+    "code_principles": [
+      "程式碼清晰易懂，變數命名有意義",
+      "每個函數只做一件事",
+      "豐富的註解和文件字串",
+      "避免複雜的巢狀結構"
+    ]
+  },
+
+  "system_architecture": {
+    "main_program": "main.py - 主程式，負責協調各模組",
+    "modules": {
+      "data_fetcher.py": "數據抓取模組 - 從網路API或網站抓取20因子數據",
+      "data_processor.py": "數據處理模組 - 清理、驗證、計算衍生指標",
+      "factor_analyzer.py": "因子分析模組 - 分析各因子對預測的貢獻度",
+      "predictor.py": "預測模組 - 整合20因子進行漲跌預測",
+      "report_generator.py": "報告生成模組 - 生成JSON格式的預測報告",
+      "config.py": "配置模組 - 存放API金鑰、URL等設定"
+    }
+  },
+
+  "twenty_factors": {
+    "F1_to_F3": "機構籌碼與資金流向",
+    "F4_to_F7": "散戶情緒與槓桿壓力", 
+    "F8_to_F12": "市場情緒與外部影響",
+    "F13_to_F20": "價格、結構與權值股"
+  },
+
+  "coding_requirements": {
+    "documentation": {
+      "每個模組": "開頭需有模組說明文件",
+      "每個函數": "需有清楚的 docstring 說明參數、回傳值和用途",
+      "關鍵邏輯": "需有行內註解解釋原因"
+    },
+    
+    "error_handling": {
+      "網路請求": "需有 try-except 處理連線失敗",
+      "數據驗證": "檢查數據完整性和合理性",
+      "錯誤訊息": "清楚說明錯誤原因和建議處理方式"
+    },
+
+    "testing": {
+      "單元測試": "每個模組需可獨立測試",
+      "測試數據": "準備範例數據用於開發測試",
+      "邊界條件": "測試極端情況的處理"
+    },
+
+    "data_handling": {
+      "輸入格式": "支援手動輸入或從CSV讀取",
+      "輸出格式": "JSON格式，包含預測結果和信心度",
+      "數據持久化": "可選擇性保存歷史預測記錄"
+    }
+  },
+
+  "external_dependencies": {
+    "required": [
+      "requests - HTTP請求",
+      "pandas - 數據處理",
+      "numpy - 數值計算",
+      "python-dateutil - 日期處理"
+    ],
+    "optional": [
+      "beautifulsoup4 - 網頁解析(如需爬蟲)",
+      "matplotlib - 數據視覺化(可選)",
+      "pytest - 單元測試"
+    ]
+  },
+
+  "development_workflow": {
+    "phase_1": "建立基礎架構和配置模組",
+    "phase_2": "實作數據抓取模組(先用範例數據測試)",
+    "phase_3": "實作數據處理和驗證邏輯",
+    "phase_4": "實作預測邏輯",
+    "phase_5": "實作報告生成",
+    "phase_6": "整合測試和優化"
+  },
+
+  "module_output_format": {
+    "description": "所有數據抓取模組必須遵循的統一文字格式",
+    "type": "unified_text_format",
+    "file_extension": ".txt",
+    "encoding": "utf-8",
+    "format_specification": {
+      "success": {
+        "pattern": "[ YYYY.MM.DD  FXX{描述}   source: {來源} ]",
+        "example": "[ 2025.12.03  F01台指期外資淨額 -29,439 口（多方 19,214，空方 48,653）   source: TAIFEX ]",
+        "elements": {
+          "brackets": "[ ... ] (中括號 + 空格)",
+          "date_format": "YYYY.MM.DD (點分隔)",
+          "module_id": "大寫字母 + 數字 (如 F01, F02)",
+          "description": "模組特定的中文描述 + 數據",
+          "number_format": "使用千分位逗號 (如 -29,439)",
+          "source": "固定格式 'source: {來源名稱}'"
+        }
+      },
+      "error": {
+        "pattern": "[ YYYY.MM.DD  FXX 錯誤: {錯誤訊息}   source: {來源} ]",
+        "example": "[ 2025.11.30  F01 錯誤: 該日無交易資料（可能是假日或休市日）   source: TAIFEX ]",
+        "rules": [
+          "錯誤標記: '{模組代號} 錯誤: {錯誤訊息}'",
+          "不區分 failed/error (統一為錯誤格式)",
+          "錯誤訊息使用中文，清楚描述問題"
+        ]
+      }
+    },
+    "implementation_rules": {
+      "function_signature": "def fetch(date: str) -> str",
+      "return_type": "str (統一文字格式)",
+      "error_handling": "所有錯誤都必須轉換為文字格式回傳，不可拋出例外",
+      "date_conversion": "輸入 YYYY-MM-DD → 輸出 YYYY.MM.DD",
+      "module_id_extraction": "從模組名稱提取大寫代號 (f01_fetcher → F01)",
+      "backward_compatibility": "run.py 支援舊的 dict 格式自動轉換"
+    }
+  },
+
+  "output_format": {
+    "prediction": {
+      "date": "預測日期",
+      "target_date": "預測的隔日日期",
+      "direction": "UP/DOWN/NEUTRAL",
+      "confidence": "0-100的信心度分數",
+      "key_factors": "主要影響因子列表",
+      "factor_summary": "各因子分析摘要",
+      "timestamp": "預測生成時間"
+    }
+  },
+
+  "file_structure": {
+    "root": "專案根目錄",
+    "src/": "原始碼目錄",
+    "data/": "數據目錄(範例數據、歷史記錄)",
+    "tests/": "測試檔案目錄",
+    "docs/": "文件目錄(外包說明書)",
+    "config/": "配置檔案目錄",
+    "output/": "輸出報告目錄"
+  },
+
+  "naming_conventions": {
+    "files": "小寫加底線 (snake_case): data_fetcher.py",
+    "classes": "駝峰式 (PascalCase): DataFetcher",
+    "functions": "小寫加底線 (snake_case): fetch_factor_data()",
+    "constants": "全大寫加底線: MAX_RETRY_COUNT",
+    "variables": "小寫加底線: factor_value"
+  },
+
+  "best_practices": {
+    "模組獨立性": "每個模組可以單獨引用和測試",
+    "配置分離": "敏感資訊(API key)放在config檔，不寫死在程式碼中",
+    "日誌記錄": "關鍵步驟記錄日誌，方便除錯",
+    "版本控制": "使用git管理，config檔案加入.gitignore",
+    "文檔優先": "先寫外包說明書，再開始編碼"
+  },
+
+  "beginner_friendly": {
+    "註解語言": "使用繁體中文註解，方便理解",
+    "範例代碼": "每個模組提供使用範例",
+    "錯誤提示": "友善的中文錯誤訊息",
+    "循序漸進": "從簡單功能開始，逐步擴充"
+  }
+}

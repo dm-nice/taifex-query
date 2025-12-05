@@ -13,8 +13,8 @@
 
 ### 1. 閱讀順序
 1. **README.md** - 了解整體架構與開發流程
-2. **本規格書** - 了解 F14 的具體需求與交付規定
-3. **base.py** - 了解基礎類別的定義
+2. **[共同開發規範書](../共同開發規範書_V1.md)** - 了解統一文字格式 v4.0 規範 ⭐
+3. **本規格書** - 了解 F14 的具體需求與交付規定
 4. **_template.py** - 作為開發起點
 
 ### 2. 設定開發環境
@@ -41,9 +41,12 @@ cp _template.py f14_fetcher_dev.py
 - **存放位置**: 請直接存放在本目錄下 (即 `f14_package/` 根目錄)
 
 ### 交付檢查清單
-- [ ] `f14_fetcher_dev.py` 檔案 (已存放在本目錄下)
-- [ ] pytest 測試通過（PASSED）
-- [ ] 實際抓取測試成功（數值不是 "-"）
+- [ ] `f14_fetcher_dev.py` 檔案（已存放在本目錄下）
+- [ ] 實作 `fetch(date: str) -> str` 函式（回傳統一文字格式）
+- [ ] 獨立測試通過（執行 `python f14_fetcher_dev.py` 無錯誤）
+- [ ] 整合測試通過（執行 `python run.py ... dev` 產生正確輸出）
+- [ ] 輸出格式符合規範（使用 [ YYYY.MM.DD F14... ] 格式）
+- [ ] 錯誤處理完整（不會拋出未處理的例外）
 - [ ] 簡短說明文件（說明您使用的抓取方式）
 
 ## 📊 資料來源規格
@@ -69,28 +72,43 @@ cp _template.py f14_fetcher_dev.py
 
 ## 🛠️ 開發規範
 
-### 1. 繼承與介面
-您的程式碼必須繼承 `modules.base.BaseFetcher` 並實作 `fetch` 方法。
+### 1. 必須實作的介面（統一文字格式 v4.0）
+
+您的程式碼必須實作 `fetch(date: str) -> str` 函式，回傳統一格式的文字字串。
 
 ```python
-from modules.base import BaseFetcher, FetchResult
+from typing import Dict, Optional
+from datetime import datetime
+import requests
+import pandas as pd
 
-MODULE = "f14_fetcher_dev"  # 必須與檔名一致 (不含 .py)
+MODULE_ID = "f14"  # 模組代號（小寫）
+SOURCE = "TAIFEX"
 
-class TXFuturesFetcher(BaseFetcher):
-    def fetch(self, date: str) -> dict:
-        # 實作抓取邏輯
-        # ...
-        return FetchResult(
-            module=MODULE,
-            date=date,
-            status="success",  # 或 "fail"
-            data={
-                "台指期貨收盤價": 27758.0
-            },
-            summary="F14: 台指期貨收盤價：27758.0",
-            source="TAIFEX"
-        ).to_dict()
+
+def format_f14_output(date: str, status: str, data: Optional[Dict] = None, error: Optional[str] = None) -> str:
+    """格式化輸出為統一文字格式"""
+    date_formatted = date.replace("-", ".")  # 2025-12-03 → 2025.12.03
+
+    if status == "success" and data:
+        close_price = data.get("台指期貨收盤價", 0.0)
+        return f"[ {date_formatted}  F14台指期貨收盤價 {close_price:,.1f}   source: {SOURCE} ]"
+    else:
+        error_msg = error or "未知錯誤"
+        return f"[ {date_formatted}  F14 錯誤: {error_msg}   source: {SOURCE} ]"
+
+
+def fetch(date: str) -> str:
+    """
+    抓取指定日期的台指期貨收盤價
+
+    Returns:
+        統一格式的文字字串
+    """
+    # 實作抓取邏輯
+    # ...
+    data = {"台指期貨收盤價": 27758.0}
+    return format_f14_output(date, "success", data=data)
 ```
 
 > [!CAUTION]
@@ -100,26 +118,46 @@ class TXFuturesFetcher(BaseFetcher):
 > 
 > 請務必使用上方範例中的 **exact key 名稱**，否則驗收會失敗。
 
-### 2. 錯誤處理
-- 若抓取失敗或無資料，請回傳 `status="fail"` 並在 `error` 欄位註明原因。
-- 請勿直接拋出 Exception 導致程式崩潰，應捕捉異常並回傳錯誤結果。
+### 2. 錯誤處理（必須遵守）
+
+所有錯誤都必須轉換為統一文字格式回傳，**不可拋出例外**。
 
 ```python
-try:
-    # 抓取邏輯
-    url = f"https://www.taifex.com.tw/cht/3/futDailyMarketReport?queryDate={date.replace('-', '/')}"
-    resp = requests.get(url, timeout=10)
-    # ...
-except Exception as e:
-    return FetchResult(
-        module=MODULE,
-        date=date,
-        status="fail",
-        error=str(e),
-        data={},
-        source="TAIFEX"
-    ).to_dict()
+def fetch(date: str) -> str:
+    # 1. 驗證日期格式
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        return format_f14_output(date, "error", error="日期格式錯誤，請使用 YYYY-MM-DD")
+
+    try:
+        # 2. 發送 HTTP 請求
+        url = f"https://www.taifex.com.tw/cht/3/futDailyMarketReport?queryDate={date.replace('-', '/')}"
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+
+        # 3. 解析資料
+        tables = pd.read_html(response.text)
+        if len(tables) == 0:
+            return format_f14_output(date, "failed", error="該日無交易資料（可能是假日或休市日）")
+
+        # ... 提取資料邏輯
+
+    except requests.Timeout:
+        return format_f14_output(date, "error", error="連線逾時，請檢查網路連線")
+
+    except requests.HTTPError as e:
+        return format_f14_output(date, "error", error=f"HTTP 錯誤 {e.response.status_code}")
+
+    except Exception as e:
+        return format_f14_output(date, "error", error=f"未預期的錯誤: {str(e)}")
 ```
+
+**錯誤處理規範**：
+- ✅ 所有錯誤都必須轉換為文字格式
+- ✅ 使用中文錯誤訊息
+- ❌ 不可讓例外向上傳播
+- ❌ 不可回傳 None 或其他類型
 
 ## 🎯 特殊處理邏輯
 
@@ -157,17 +195,22 @@ def to_float(v):
 | 2025-12-08 | fail | - | 週日，無交易 |
 
 ### 自行測試 (必做)
-請確保您的環境已安裝 `pytest`。在專案根目錄執行：
 
 ```bash
-# 測試您的模組
-pytest f14_fetcher_dev.py
+# 1. 獨立測試
+python dev/f14_package/f14_fetcher_dev.py 2025-12-03
+
+# 2. 整合測試（驗收模式）
+python run.py 2025-12-03 dev --module f14_fetcher_dev
+
+# 3. 檢查輸出
+type data\2025-12-03_f14_fetcher_dev.txt
 ```
 
 **驗收標準：**
-1. 測試結果必須為 **PASSED**。
-2. 產出的 JSON 格式必須完全符合上述定義。
-3. 執行 `python run.py 2025-12-03 dev --module f14_fetcher_dev` 後，`data/` 目錄產生的 JSON 檔案數值不是 "-"。
+1. 獨立測試通過（執行 `python f14_fetcher_dev.py 2025-12-03` 無錯誤）
+2. 輸出格式符合統一文字格式規範
+3. 執行 `python run.py 2025-12-03 dev --module f14_fetcher_dev` 後，`data/` 目錄產生的 `.txt` 檔案包含正確數據
 
 ## ⚠️ 外包注意事項 (Q&A)
 
@@ -180,9 +223,9 @@ pytest f14_fetcher_dev.py
 
 2. **Q: 是否有特定的錯誤處理需求（例如：網路錯誤、數據格式錯誤）？**
    - **A**: 是，非常重要。
-     - 請參閱「⚙️ 開發前須知 > 錯誤處理需求」章節。
+     - 請參閱「🛠️ 開發規範 > 錯誤處理」章節。
      - 必須捕捉 ConnectionError, Timeout, ValueError 等異常。
-     - **禁止**直接讓程式 Crash，必須回傳 `status="fail"` 的 `FetchResult`。
+     - **禁止**直接讓程式 Crash，必須回傳統一文字格式的錯誤訊息。
 
 3. **Q: 是否需要支援多語系（例如：中文與英文）？**
    - **A**: 不需要。

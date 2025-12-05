@@ -1,70 +1,112 @@
 """
-_template.py
-這是給外包人員的「標準模具」範本。
-請複製此檔案，並將檔名修改為指定的模組名稱（例如 f02_options.py）。
+_template.py - F14 模組開發範本（統一文字格式 v4.0）
+
+這是 F14 模組的標準範本。
 
 開發規範：
-1. 檔名必須與 MODULE 變數一致。
-2. 必須繼承 BaseFetcher 並實作 fetch 方法。
-3. 必須回傳 FetchResult 物件（或符合格式的字典）。
+1. MODULE_ID = "f14"（固定）
+2. 必須實作 fetch(date: str) -> str 函式
+3. 必須回傳統一文字格式（不可拋出例外）
+4. 詳細規範請參考：../共同開發規範書_V1.md 和 f14_fetcher_spec.md
+
+統一文字格式：
+- 成功: [ YYYY.MM.DD  F14台指期貨收盤價 27,758.0   source: TAIFEX ]
+- 失敗: [ YYYY.MM.DD  F14 錯誤: {錯誤訊息}   source: TAIFEX ]
 """
 
-from modules.base import BaseFetcher, FetchResult
+import sys
+import requests
+import pandas as pd
+from datetime import datetime
+from typing import Dict, Optional
 
-# [重要] 請將此變數修改為與檔名一致 (不含 .py)
-MODULE = "_template"
+# 模組識別
+MODULE_ID = "f14"
+MODULE_NAME = "f14_fetcher_dev"
+SOURCE = "TAIFEX"
 
-class Fetcher(BaseFetcher):
-    def fetch(self, date: str) -> dict:
-        """
-        執行抓取邏輯
-        :param date: 查詢日期 (YYYY-MM-DD)
-        :return: FetchResult (或是 dict)
-        """
-        try:
-            # 1. 在這裡寫你的爬蟲邏輯
-            # url = ...
-            # data = ...
-            
-            # 模擬抓取到的資料
-            data = {
-                "外資多方口數": 100,
-                "外資空方口數": 50,
-                "外資多空淨額": 50
-            }
-            
-            summary = f"測試模組：{date} 執行成功"
 
-            # 2. 回傳結果
-            # 建議使用 FetchResult 物件確保格式正確
-            return FetchResult(
-                module=MODULE,
-                date=date,
-                status="success",
-                summary=summary,
-                data=data,
-                source="TAIFEX"
-            ).model_dump()
+def format_f14_output(date: str, status: str, data: Optional[Dict] = None, error: Optional[str] = None) -> str:
+    """
+    格式化輸出為統一文字格式
 
-        except Exception as e:
-            # 錯誤處理
-            return FetchResult(
-                module=MODULE,
-                date=date,
-                status="error",
-                error=str(e)
-            ).model_dump()
+    Args:
+        date: 日期 (YYYY-MM-DD)
+        status: 狀態 ("success" / "failed" / "error")
+        data: 成功時的資料字典
+        error: 失敗時的錯誤訊息
 
-# 為了讓 run.py 能直接呼叫 fetch 函式，我們需要實例化或是包裝一下
-# 但根據目前的 run.py 設計，它是直接呼叫 module.fetch(date)
-# 所以我們需要把上面的 Class 轉成 module level function，或是調整 run.py
-# 
-# 修正：目前的 run.py 是呼叫 `mod.fetch(date)`。
-# 為了保持簡單，外包人員可以直接寫一個 fetch 函式，不一定要用 Class，
-# 但為了 Type Hint，我們保留 BaseFetcher 的概念作為參考。
-# 
-# 下面這是符合目前 run.py 的寫法（函式版）：
+    Returns:
+        統一格式文字字串
+    """
+    date_formatted = date.replace("-", ".")  # 2025-12-03 → 2025.12.03
 
-def fetch(date: str) -> dict:
-    # 實作內容同上
-    return Fetcher().fetch(date)
+    if status == "success" and data:
+        close_price = data.get("台指期貨收盤價", 0.0)
+        return f"[ {date_formatted}  F14台指期貨收盤價 {close_price:,.1f}   source: {SOURCE} ]"
+    else:
+        error_msg = error or "未知錯誤"
+        return f"[ {date_formatted}  F14 錯誤: {error_msg}   source: {SOURCE} ]"
+
+
+def fetch(date: str) -> str:
+    """
+    抓取指定日期的台指期貨收盤價
+
+    Args:
+        date: 查詢日期，格式 YYYY-MM-DD
+
+    Returns:
+        統一格式的文字字串
+    """
+    # 1. 驗證日期格式
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        return format_f14_output(date, "error", error="日期格式錯誤，請使用 YYYY-MM-DD")
+
+    try:
+        # 2. 發送 HTTP 請求
+        # 替換為實際的 TAIFEX URL
+        url = f"https://www.taifex.com.tw/cht/3/futDailyMarketReport?queryDate={date.replace('-', '/')}"
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+
+        # 3. 解析資料
+        tables = pd.read_html(response.text)
+        if len(tables) == 0:
+            return format_f14_output(date, "failed", error="該日無交易資料（可能是假日或休市日）")
+
+        # 4. 提取台指期貨收盤價
+        # 🔧 實作您的資料提取邏輯
+        # 尋找 TX (台指期貨) 的收盤價
+        # ...
+
+        # 範例：假設找到收盤價
+        close_price = 27758.0  # 🔧 替換為實際提取的值
+
+        # 5. 回傳成功結果
+        data = {
+            "台指期貨收盤價": close_price
+        }
+        return format_f14_output(date, "success", data=data)
+
+    except requests.Timeout:
+        return format_f14_output(date, "error", error="連線逾時，請檢查網路連線")
+
+    except requests.HTTPError as e:
+        return format_f14_output(date, "error", error=f"HTTP 錯誤 {e.response.status_code}")
+
+    except Exception as e:
+        return format_f14_output(date, "error", error=f"未預期的錯誤: {str(e)}")
+
+
+def main():
+    """獨立測試用"""
+    test_date = sys.argv[1] if len(sys.argv) > 1 else '2025-12-03'
+    result = fetch(test_date)
+    print(result)
+
+
+if __name__ == '__main__':
+    main()

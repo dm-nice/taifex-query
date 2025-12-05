@@ -1,22 +1,54 @@
 # [模組名稱] 開發規格
 
-> **模組代號**: `fXX_fetcher`  
-> **資料來源**: [資料源名稱]  
+> **模組代號**: `fXX_fetcher`
+> **資料來源**: [資料源名稱]
 > **難度**: ⭐⭐☆☆☆ (1-5 星)
 
+---
+
+## 📖 使用說明
+
+> 💡 **給外包開發者**：
+> 1. 請先閱讀 [共同開發規範書](共同開發規範書_V1.md) 了解通用規範（快速參考章節 10 分鐘即可）
+> 2. 本文件僅包含 **FXX 模組特定** 的需求與規格
+> 3. 遇到問題請參考共同開發規範書的 FAQ 章節
+
+---
+
 ## 📋 專案目標
-簡述本模組的目標，例如：抓取 **[資料名稱]** 的 **[特定欄位]**。
+
+簡述本模組的目標，例如：
+
+抓取 **[資料名稱]** 的 **[特定欄位]**，用於分析 [用途說明]。
+
+---
 
 ## 📂 交付檔案
+
 請依照以下命名規則建立檔案：
+
 - **檔名**: `fXX_fetcher_dev.py`
-- **MODULE 變數**: `"fXX_fetcher_dev"`
+- **MODULE_ID 變數**: `"fxx"` (小寫)
+- **存放位置**: `dev/` 目錄
+
+---
 
 ## 📊 資料來源規格
+
+### 基本資訊
 - **URL**: `https://example.com/path?param=value`
 - **抓取方式**: [HTML 表格爬蟲 / API / JSON / CSV 等]
 - **表格特徵**: [描述表格結構，例如：多層表頭 (MultiIndex)、單層表頭等]
 - **更新頻率**: [每日 / 每週 / 即時]
+- **資料來源標記**: `source: "[來源名稱]"` (用於輸出格式)
+
+### 挑戰與注意事項
+> [!IMPORTANT]
+> **資料抓取挑戰**：
+> - [列出此模組的特殊挑戰，例如：需要特定參數、POST 請求、動態載入等]
+> - [建議的解決方法或測試方式]
+
+---
 
 ## 🔍 需抓取的欄位定義
 
@@ -26,42 +58,55 @@
 | 目標資料 | [欄位名] | [說明] | int | 18808 |
 | 目標資料 | [欄位名] | [說明] | int | 48032 |
 
-## ⚙️ 開發前須知
+> [!CAUTION]
+> **重要：欄位名稱必須完全一致！**
+> - ✅ 正確：使用上表定義的 exact 名稱
+> - ❌ 錯誤：自行簡化或改寫欄位名（系統會無法讀取資料）
 
-### 測試數據與工具
-- **測試數據**: 請使用下方「🧪 測試案例」章節提供的測試日期進行開發
-- **API 測試工具**: 建議使用瀏覽器開發者工具 (F12) 或 Postman 測試 API，無需額外工具
-- **依賴套件**: 專案已安裝常用套件 (`requests`, `pandas`, `beautifulsoup4`)，若需其他套件請在交付時註明
+---
 
-### 錯誤處理需求
-> [!IMPORTANT]
-> **必須處理以下錯誤情境**：
-> 1. **網路錯誤**: 連線逾時、HTTP 錯誤 (使用 `timeout=10` 參數)
-> 2. **資料格式錯誤**: 找不到目標欄位、資料為空、格式異常
-> 3. **非交易日**: 週末或國定假日無資料時，回傳 `status="fail"` 並註明原因
-> 
-> **所有錯誤都必須捕捉並回傳 `FetchResult` 物件，不可直接拋出 Exception。**
+## 📝 輸出格式定義
 
-### 語系支援
-- **僅需支援繁體中文**: 所有 data key 名稱、summary、error 訊息皆使用繁體中文
-- **無需多語系**: 本專案不需要英文或其他語言支援
+### 成功時
+```
+[ YYYY.MM.DD  FXX[具體描述 + 數值]   source: [來源] ]
+```
 
-### 開發環境
-- **Python 版本**: 3.12+
-- **虛擬環境**: 請使用專案提供的 `venv32` 虛擬環境
-- **測試框架**: pytest (已安裝)
+**範例**：
+```
+[ 2025.12.03  FXX外資多方口數 18,268，空方口數 47,300   source: [來源] ]
+```
 
-## 🛠️ 開發規範
+### 失敗時
+```
+[ YYYY.MM.DD  FXX 錯誤: [錯誤訊息]   source: [來源] ]
+```
 
-### 1. 必須實作的介面
+**範例**：
+```
+[ 2025.11.30  FXX 錯誤: 該日無交易資料（可能是假日或休市日）   source: [來源] ]
+```
 
-您的程式碼必須實作 `fetch` 函式，回傳統一格式的文字字串。
+---
+
+## 🛠️ 實作程式碼範本
 
 ```python
+"""
+FXX模組：[模組說明]
+
+資料來源：[來源名稱]
+更新頻率：[頻率]
+"""
+
+import requests
+import pandas as pd
+from datetime import datetime
 from typing import Dict, Optional
 
-MODULE_ID = "fxx"  # 模組代號 (小寫)
-MODULE_NAME = "fxx_fetcher_dev"  # 必須與檔名一致 (不含 .py)
+# 模組識別
+MODULE_ID = "fxx"  # 小寫，對應模組代號
+SOURCE = "[來源名稱]"  # 資料來源標記
 
 
 def format_fxx_output(date: str, status: str, data: Optional[Dict] = None, error: Optional[str] = None) -> str:
@@ -78,15 +123,17 @@ def format_fxx_output(date: str, status: str, data: Optional[Dict] = None, error
         統一格式文字字串
     """
     date_formatted = date.replace("-", ".")  # 2025-12-03 → 2025.12.03
+    module_code = MODULE_ID.upper()  # fxx → FXX
 
     if status == "success" and data:
-        # 根據您的模組特性格式化輸出
+        # 🔧 根據您的模組需求客製化這裡的輸出格式
         # 範例：
-        value = data.get("some_value", 0)
-        return f"[ {date_formatted}  FXX{描述} {value:,}   source: {來源} ]"
+        value1 = data.get("key1", 0)
+        value2 = data.get("key2", 0)
+        return f"[ {date_formatted}  {module_code}[描述] {value1:,} [單位]，{value2:,} [單位]   source: {SOURCE} ]"
     else:
         error_msg = error or "未知錯誤"
-        return f"[ {date_formatted}  FXX 錯誤: {error_msg}   source: {來源} ]"
+        return f"[ {date_formatted}  {module_code} 錯誤: {error_msg}   source: {SOURCE} ]"
 
 
 def fetch(date: str) -> str:
@@ -98,34 +145,7 @@ def fetch(date: str) -> str:
 
     Returns:
         統一格式的文字字串
-        格式: [ YYYY.MM.DD  FXX{描述}   source: {來源} ]
     """
-    # 實作抓取邏輯
-    # ...
-
-    # 成功時
-    data = {
-        "some_value": 12345,
-        # ... 其他資料
-    }
-    return format_fxx_output(date, "success", data=data)
-```
-
-> [!IMPORTANT]
-> **重要規範**：
-> - ✅ 回傳類型必須是 `str`（統一文字格式）
-> - ✅ 模組內部可以使用 dict 處理邏輯，最後轉換為文字
-> - ✅ 所有錯誤都必須轉換為文字格式回傳
-> - ❌ 不可拋出例外，所有錯誤都用錯誤格式文字表示
-
-### 2. 錯誤處理
-
-所有錯誤都必須捕捉並轉換為統一的文字格式回傳，不可拋出例外。
-
-```python
-def fetch(date: str) -> str:
-    """抓取指定日期的資料"""
-
     # 1. 驗證日期格式
     try:
         datetime.strptime(date, "%Y-%m-%d")
@@ -134,20 +154,31 @@ def fetch(date: str) -> str:
 
     try:
         # 2. 發送 HTTP 請求
-        response = requests.get(url, headers=headers, timeout=30)
+        url = f"[您的 URL]?date={date}"  # 🔧 修改為實際 URL
+        response = requests.get(url, timeout=30)
         response.raise_for_status()
 
         # 3. 解析資料
+        # 🔧 根據資料源類型選擇解析方式：
+        # - HTML 表格: tables = pd.read_html(response.text)
+        # - JSON: data = response.json()
+        # - CSV: df = pd.read_csv(...)
+
         tables = pd.read_html(response.text)
         if len(tables) == 0:
             return format_fxx_output(date, "failed", error="該日無交易資料（可能是假日或休市日）")
 
-        # 4. 提取資料
-        data = extract_data(tables[0], date)
-        if data.get("status") == "success":
-            return format_fxx_output(date, "success", data=data.get("data"))
-        else:
-            return format_fxx_output(date, "failed", error=data.get("error", "資料提取失敗"))
+        # 4. 提取目標資料
+        df = tables[0]
+        # 🔧 實作您的資料提取邏輯
+        # ...
+
+        # 5. 回傳成功結果
+        data = {
+            "key1": 12345,  # 🔧 替換為實際欄位
+            "key2": 67890,
+        }
+        return format_fxx_output(date, "success", data=data)
 
     except requests.Timeout:
         return format_fxx_output(date, "error", error="連線逾時，請檢查網路連線")
@@ -156,72 +187,113 @@ def fetch(date: str) -> str:
         return format_fxx_output(date, "error", error=f"HTTP 錯誤 {e.response.status_code}")
 
     except Exception as e:
-        logger.exception("未預期的錯誤")
         return format_fxx_output(date, "error", error=f"未預期的錯誤: {str(e)}")
+
+
+def main():
+    """獨立測試用"""
+    import sys
+    test_date = sys.argv[1] if len(sys.argv) > 1 else '2025-12-03'
+    result = fetch(test_date)
+    print(result)
+
+
+if __name__ == '__main__':
+    main()
 ```
 
-**錯誤處理規範**：
-- ✅ 所有錯誤都必須轉換為文字格式
-- ✅ 使用適當的錯誤訊息（中文）
-- ❌ 不可讓例外向上傳播
-- ❌ 不可回傳 None 或其他類型
+---
 
 ## 🎯 特殊處理邏輯
-（如果有特殊的資料處理需求，請在此說明）
 
-例如：
-- 需要處理多層表頭 (MultiIndex)
-- 需要計算衍生欄位（例如：多空淨額 = 多方口數 - 空方口數）
-- 需要處理特殊字元或編碼問題
+（如果有特殊的資料處理需求，請在此詳細說明）
+
+### 1. [特殊需求 1]
+- **問題**: [描述問題]
+- **解決方法**: [說明如何處理]
+- **範例代碼**:
+```python
+# 範例代碼
+```
+
+### 2. [特殊需求 2]
+- **問題**: [描述問題]
+- **解決方法**: [說明如何處理]
+
+---
 
 ## 🧪 測試案例
 
 ### 測試日期與預期結果
+
 請使用以下日期進行測試，確保結果符合預期：
 
 | 測試日期 | 預期狀態 | 預期資料 | 備註 |
 |---------|---------|---------|------|
-| 2025-11-28 | success | 外資多方口數: 18268 | 正常交易日 |
-| 2025-11-30 | fail | - | 週六，無交易 |
+| YYYY-MM-DD | success | [具體數值] | 正常交易日 |
+| YYYY-MM-DD | success | [具體數值] | 正常交易日 |
+| YYYY-MM-DD | failed | - | 週末/假日，無交易 |
 
-### 自行測試 (必做)
-請確保您的環境已安裝 `pytest`。在專案根目錄執行：
+### 測試方法
 
 ```bash
-# 測試您的模組
-pytest dev/fXX_fetcher_dev.py
+# 1. 獨立測試
+python dev/fXX_fetcher_dev.py YYYY-MM-DD
+
+# 2. 整合測試（驗收模式）
+python run.py YYYY-MM-DD dev --module fXX_fetcher_dev
+
+# 3. 檢查輸出
+type data\YYYY-MM-DD_fXX_fetcher_dev.txt
 ```
 
-**驗收標準：**
-1. 測試結果必須為 **PASSED**。
-2. 產出的 JSON 格式必須完全符合上述定義。
+---
 
-## 📦 交付內容
-1. `fXX_fetcher_dev.py` (您的實作檔案)
-2. 任何新增的依賴套件 (若有使用標準庫以外的套件，請註明)
+## 📦 交付檢查清單
 
-## ⚠️ 外包注意事項 (Q&A)
+- [ ] `fXX_fetcher_dev.py` 檔案（已存放在 `dev/` 目錄）
+- [ ] 獨立測試通過（執行 `python fXX_fetcher_dev.py` 無錯誤）
+- [ ] 整合測試通過（執行 `python run.py ... dev` 產生正確輸出）
+- [ ] 輸出格式符合規範（使用 [ YYYY.MM.DD FXX... ] 格式）
+- [ ] 所有測試案例都通過
+- [ ] 錯誤處理完整（不會拋出未處理的例外）
+- [ ] 簡短說明文件（說明您使用的抓取方式與遇到的挑戰）
 
-針對外包商常見問題，在此統一說明：
+---
 
-1. **Q: 是否需要額外的測試數據或 API 測試工具？**
-   - **A**: 不需要。
-     - 測試數據：請直接使用本規格書「🧪 測試案例」章節提供的日期。
-     - 工具：使用瀏覽器開發者工具 (F12) 觀察 Network 請求即可。
+## ⚠️ 常見問題
 
-2. **Q: 是否有特定的錯誤處理需求（例如：網路錯誤、數據格式錯誤）？**
-   - **A**: 是，非常重要。
-     - 請參閱「⚙️ 開發前須知 > 錯誤處理需求」章節。
-     - 必須捕捉 ConnectionError, Timeout, ValueError 等異常。
-     - **禁止**直接讓程式 Crash，必須回傳 `status="fail"` 的 `FetchResult`。
+### Q1: 資料抓取遇到問題怎麼辦？
+**A**:
+1. 使用瀏覽器開發者工具 (F12) → Network 標籤觀察請求
+2. 確認 URL 參數格式是否正確
+3. 檢查是否需要特定的 headers 或 cookies
 
-3. **Q: 是否需要支援多語系（例如：中文與英文）？**
-   - **A**: 不需要。
-     - 本專案僅需支援 **繁體中文**。
-     - 錯誤訊息、Summary、Data Key 皆使用中文即可。
+### Q2: 輸出格式該如何調整？
+**A**:
+- 修改 `format_fxx_output()` 函式中成功時的輸出格式
+- 確保包含所有必要元素：日期、模組代號、描述、數值、來源
+- 參考 [F01 模組範例](f01_package/f01_fetcher_開發規範書.md)
+
+### Q3: 如何處理多層表頭？
+**A**:
+```python
+df.columns = df.columns.get_level_values(1)  # 取第二層
+# 或
+df.columns = ['_'.join(col).strip() for col in df.columns.values]  # 合併多層
+```
+
+---
 
 ## 📝 參考資料
-（如果有相關的官方文件或參考連結，請列在此處）
 
+- [共同開發規範書](共同開發規範書_V1.md) - 必讀！包含所有通用規範
+- [F01 模組範例](f01_package/f01_fetcher_開發規範書.md) - 完整實作參考
 - [資料源官方網站](https://example.com)
-- [API 文件](https://example.com/api-docs)
+- [API 文件](https://example.com/api-docs)（如果有）
+
+---
+
+**範本版本**: 4.0
+**最後更新**: 2025-12-05
+**適用專案**: 台指期貨20因子預測系統
