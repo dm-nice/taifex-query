@@ -113,15 +113,106 @@ def get_module_list(folder: str, only_module: Optional[str] = None) -> List[str]
         return []
 
 
+def extract_module_id(module_name: str) -> str:
+    """
+    從模組名稱提取模組代號
+
+    Args:
+        module_name: 例如 "f01_fetcher", "f02_fetcher_dev"
+
+    Returns:
+        例如 "F01", "F02"
+    """
+    import re
+    match = re.match(r'([a-z]\d+)', module_name, re.IGNORECASE)
+    if match:
+        return match.group(1).upper()
+    return module_name.upper()[:3]
+
+
+def convert_dict_to_text(result_dict: Dict, module_name: str, query_date: str) -> str:
+    """
+    將舊的 dict 格式轉換為文字格式（向後兼容）
+
+    Args:
+        result_dict: 舊格式 dict
+        module_name: 模組名稱
+        query_date: 查詢日期
+
+    Returns:
+        統一格式文字
+    """
+    module_id = extract_module_id(module_name)
+    date_formatted = query_date.replace("-", ".")
+    status = result_dict.get("status", "error")
+    source = result_dict.get("source", "UNKNOWN")
+
+    if status == "success":
+        summary = result_dict.get("summary", "")
+        if summary:
+            summary = summary.replace("台指期", "")
+            text = f"[ {date_formatted}  {module_id}{summary}   source: {source} ]"
+        else:
+            data = result_dict.get("data", {})
+            data_str = ", ".join(f"{k}: {v}" for k, v in data.items())
+            text = f"[ {date_formatted}  {module_id} {data_str}   source: {source} ]"
+    else:
+        error_msg = result_dict.get("error", "未知錯誤")
+        text = f"[ {date_formatted}  {module_id} 錯誤: {error_msg}   source: {source} ]"
+
+    return text
+
+
+def validate_text_format(result: Any, module_name: str, query_date: str) -> Tuple[str, str]:
+    """
+    驗證並正規化模組返回結果（支援文字和 dict 雙格式）
+
+    Args:
+        result: 模組返回的結果（字串或 dict）
+        module_name: 模組名稱
+        query_date: 查詢日期
+
+    Returns:
+        (正規化後的文字, 狀態碼)
+    """
+    module_short = module_name.split(".")[-1]
+    module_id = extract_module_id(module_short)
+    date_formatted = query_date.replace("-", ".")
+
+    # 1. 字串格式（新模組）
+    if isinstance(result, str):
+        if result.startswith("[") and result.endswith("]"):
+            if date_formatted in result and module_id in result:
+                status = "failed" if "錯誤:" in result else "success"
+                return result, status
+
+        # 格式不正確
+        logger.warning(f"模組回傳的文字格式不正確")
+        text = f"[ {date_formatted}  {module_id} 錯誤: 模組回傳格式錯誤   source: UNKNOWN ]"
+        return text, "invalid"
+
+    # 2. dict 格式（舊模組，向後兼容）
+    elif isinstance(result, dict):
+        logger.info(f"偵測到舊格式 (dict)，自動轉換為文字格式")
+        return convert_dict_to_text(result, module_short, query_date), \
+               result.get("status", "error")
+
+    # 3. 無效類型
+    else:
+        logger.error(f"無效的回傳類型: {type(result)}")
+        text = f"[ {date_formatted}  {module_id} 錯誤: 返回格式錯誤   source: UNKNOWN ]"
+        return text, "invalid"
+
+
 def validate_result_format(result: Dict, module_name: str, query_date: str) -> Tuple[Dict, str]:
     """
-    驗證並正規化模組返回結果
-    
+    驗證並正規化模組返回結果（舊版，保留用於向後兼容）
+
     Args:
         result: 模組返回的結果
         module_name: 模組名稱
         query_date: 查詢日期
-        
+
     Returns:
         (正規化後的結果, 狀態碼)
     """
@@ -157,157 +248,107 @@ def validate_result_format(result: Dict, module_name: str, query_date: str) -> T
     return result, status
 
 
-def save_result(result: Dict, module_name: str, exec_day: str, dev_mode: bool) -> Path:
+def save_result(result: str, module_name: str, exec_day: str, dev_mode: bool) -> Path:
     """
-    儲存執行結果到檔案（自動格式化）
-    
+    儲存執行結果到檔案（統一文字格式）
+
     Args:
-        result: 執行結果
+        result: 執行結果（文字字串）
         module_name: 模組名稱
         exec_day: 執行日期
         dev_mode: 是否為驗收模式
-        
+
     Returns:
         檔案路徑
     """
     suffix = "_dev" if dev_mode else ""
     module_short = module_name.split(".")[-1]
-    data_file = BASE_DIR / f"{exec_day}_{module_short}{suffix}.json"
-    
-    # 如果是成功的 f01 模組，使用自訂格式
-    if result.get("status") == "success" and module_short == "f01_fetcher":
-        try:
-            query_date = result.get("date", "")
-            date_formatted = query_date.replace("-", ".")  # 轉換 2025-12-03 -> 2025.12.03
-            net_pos = result.get("data", {}).get("net_position", 0)
-            long_pos = result.get("data", {}).get("long_position", 0)
-            short_pos = result.get("data", {}).get("short_position", 0)
-            source = result.get("source", "TAIFEX")
-            
-            # 自訂格式: [ 2025.12.03  F01台指期外資淨額 -29,224 口（多方 18,808，空方 48,032）   source: TAIFEX ]
-            custom_output = f"[ {date_formatted}  F01台指期外資淨額 {net_pos:,} 口（多方 {long_pos:,}，空方 {short_pos:,}）   source: {source} ]"
-            
-            with open(data_file, "w", encoding="utf-8") as f:
-                f.write(custom_output)
-            
-            return data_file
-        except Exception as e:
-            logger.warning(f"無法套用自訂格式: {e}，改用 JSON 格式")
-    
-    # 預設使用 JSON 格式
+
+    # 改用 .txt 副檔名
+    data_file = BASE_DIR / f"{exec_day}_{module_short}{suffix}.txt"
+
+    # 直接寫入文字
     with open(data_file, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
-    
+        f.write(result)
+
     return data_file
 
 
-def execute_module(module_name: str, query_date: str, logger: logging.Logger) -> Tuple[Dict, str]:
+def execute_module(module_name: str, query_date: str, logger: logging.Logger) -> Tuple[str, str]:
     """
     執行單一模組
-    
+
     Args:
         module_name: 模組完整名稱
         query_date: 查詢日期
         logger: 日誌記錄器
-        
+
     Returns:
-        (執行結果, 狀態碼)
+        (執行結果文字, 狀態碼)
     """
     module_short = module_name.split(".")[-1]
-    
+
     try:
         logger.info(f"執行模組: {module_name}")
-        
+
         # 從快取或動態載入模組
         if module_name not in MODULE_CACHE:
             MODULE_CACHE[module_name] = importlib.import_module(module_name)
-        
+
         mod = MODULE_CACHE[module_name]
-        
+
         # 檢查是否有 fetch 函式
         if not hasattr(mod, 'fetch'):
-            error_result = {
-                "module": module_short,
-                "date": query_date,
-                "status": "error",
-                "error": "模組缺少 fetch() 函式"
-            }
-            return error_result, "error"
-        
+            module_id = extract_module_id(module_short)
+            date_formatted = query_date.replace("-", ".")
+            error_text = f"[ {date_formatted}  {module_id} 錯誤: 模組缺少 fetch() 函式   source: UNKNOWN ]"
+            return error_text, "error"
+
         # 執行 fetch 函式
         result = mod.fetch(query_date)
-        
-        # 驗證並正規化結果
-        validated_result, status = validate_result_format(result, module_name, query_date)
-        
-        return validated_result, status
-        
+
+        # 驗證並正規化
+        validated_text, status = validate_text_format(result, module_name, query_date)
+
+        return validated_text, status
+
     except ImportError as e:
         logger.error(f"模組載入失敗: {e}")
-        error_result = {
-            "module": module_short,
-            "date": query_date,
-            "status": "error",
-            "error": f"無法載入模組: {str(e)}"
-        }
-        return error_result, "error"
-    
+        module_id = extract_module_id(module_short)
+        date_formatted = query_date.replace("-", ".")
+        error_text = f"[ {date_formatted}  {module_id} 錯誤: 無法載入模組   source: UNKNOWN ]"
+        return error_text, "error"
+
     except Exception as e:
         logger.error(f"執行異常: {str(e)}")
         logger.debug(traceback.format_exc())
-        
-        error_result = {
-            "module": module_short,
-            "date": query_date,
-            "status": "error",
-            "error": f"執行失敗: {str(e)}"
-        }
-        return error_result, "error"
+
+        module_id = extract_module_id(module_short)
+        date_formatted = query_date.replace("-", ".")
+        error_text = f"[ {date_formatted}  {module_id} 錯誤: 執行失敗   source: UNKNOWN ]"
+        return error_text, "error"
 
 
-def print_summary(result: Dict, status: str, logger: logging.Logger):
+def print_summary(result: str, status: str, logger: logging.Logger):
     """
-    顯示執行摘要（中文）
-    
+    顯示執行摘要（文字格式）
+
     Args:
-        result: 執行結果
+        result: 執行結果文字
         status: 狀態碼
         logger: 日誌記錄器
     """
     icon = STATUS_ICONS.get(status, "❓")
-    
-    # 狀態中文對應
+
     status_zh = {
         "success": "成功",
         "failed": "失敗",
         "error": "錯誤",
         "invalid": "無效"
     }
-    
+
     logger.info(f"  {icon} 狀態: {status_zh.get(status, status)}")
-    
-    # 顯示摘要或錯誤訊息
-    if "summary" in result and result["summary"]:
-        logger.info(f"  📊 {result['summary']}")
-    elif "error" in result:
-        logger.info(f"  💬 {result['error']}")
-    
-    # 顯示資料內容
-    if status == "success" and "data" in result:
-        data = result["data"]
-        if isinstance(data, dict):
-            for key, value in data.items():
-                # 將英文 key 轉換為中文顯示
-                key_zh = {
-                    "long_position": "多方口數",
-                    "short_position": "空方口數",
-                    "net_position": "淨額"
-                }.get(key, key)
-                
-                if isinstance(value, (int, float)):
-                    logger.info(f"     • {key_zh}: {value:,}")
-                else:
-                    logger.info(f"     • {key_zh}: {value}")
+    logger.info(f"  📄 輸出: {result}")
 
 
 def run(query_date: str, dev_mode: bool = False, only_module: Optional[str] = None):

@@ -53,57 +53,118 @@
 
 ## 🛠️ 開發規範
 
-### 1. 繼承與介面
-您的程式碼必須繼承 `modules.base.BaseFetcher` 並實作 `fetch` 方法。
+### 1. 必須實作的介面
+
+您的程式碼必須實作 `fetch` 函式，回傳統一格式的文字字串。
 
 ```python
-from modules.base import BaseFetcher, FetchResult
+from typing import Dict, Optional
 
-MODULE = "fXX_fetcher_dev"  # 必須與檔名一致 (不含 .py)
+MODULE_ID = "fxx"  # 模組代號 (小寫)
+MODULE_NAME = "fxx_fetcher_dev"  # 必須與檔名一致 (不含 .py)
 
-class [ClassName]Fetcher(BaseFetcher):
-    def fetch(self, date: str) -> dict:
-        # 實作抓取邏輯
-        # ...
-        return FetchResult(
-            module=MODULE,
-            date=date,
-            status="success",  # 或 "fail"
-            data={
-                "外資多方口數": 18808,
-                "外資空方口數": 48032,
-                "外資多空淨額": -29224
-            },
-            summary="[簡短摘要，例如：F1: 台指期外資淨額：-29224]",
-            source="[資料源名稱，例如：TAIFEX]"
-        ).to_dict()
+
+def format_fxx_output(date: str, status: str, data: Optional[Dict] = None, error: Optional[str] = None) -> str:
+    """
+    格式化輸出為統一文字格式
+
+    Args:
+        date: 日期 (YYYY-MM-DD)
+        status: 狀態 ("success" / "failed" / "error")
+        data: 成功時的資料字典
+        error: 失敗時的錯誤訊息
+
+    Returns:
+        統一格式文字字串
+    """
+    date_formatted = date.replace("-", ".")  # 2025-12-03 → 2025.12.03
+
+    if status == "success" and data:
+        # 根據您的模組特性格式化輸出
+        # 範例：
+        value = data.get("some_value", 0)
+        return f"[ {date_formatted}  FXX{描述} {value:,}   source: {來源} ]"
+    else:
+        error_msg = error or "未知錯誤"
+        return f"[ {date_formatted}  FXX 錯誤: {error_msg}   source: {來源} ]"
+
+
+def fetch(date: str) -> str:
+    """
+    抓取指定日期的資料
+
+    Args:
+        date: 查詢日期，格式 YYYY-MM-DD
+
+    Returns:
+        統一格式的文字字串
+        格式: [ YYYY.MM.DD  FXX{描述}   source: {來源} ]
+    """
+    # 實作抓取邏輯
+    # ...
+
+    # 成功時
+    data = {
+        "some_value": 12345,
+        # ... 其他資料
+    }
+    return format_fxx_output(date, "success", data=data)
 ```
 
-> [!CAUTION]
-> **重要：data 的 key 名稱必須完全一致！**
-> - ✅ 正確：`"外資多方口數"`, `"外資空方口數"`, `"外資多空淨額"`
-> - ❌ 錯誤：`"外資多單口數"`, `"外資空單口數"` (系統會無法讀取資料)
-> 
-> 請務必使用上方範例中的 **exact key 名稱**，否則驗收會失敗。
+> [!IMPORTANT]
+> **重要規範**：
+> - ✅ 回傳類型必須是 `str`（統一文字格式）
+> - ✅ 模組內部可以使用 dict 處理邏輯，最後轉換為文字
+> - ✅ 所有錯誤都必須轉換為文字格式回傳
+> - ❌ 不可拋出例外，所有錯誤都用錯誤格式文字表示
 
 ### 2. 錯誤處理
-- 若抓取失敗或無資料，請回傳 `status="fail"` 並在 `error` 欄位註明原因。
-- 請勿直接拋出 Exception 導致程式崩潰，應捕捉異常並回傳錯誤結果。
+
+所有錯誤都必須捕捉並轉換為統一的文字格式回傳，不可拋出例外。
 
 ```python
-try:
-    # 抓取邏輯
-    ...
-except Exception as e:
-    return FetchResult(
-        module=MODULE,
-        date=date,
-        status="fail",
-        error=str(e),
-        data={},
-        source="[資料源名稱]"
-    ).to_dict()
+def fetch(date: str) -> str:
+    """抓取指定日期的資料"""
+
+    # 1. 驗證日期格式
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        return format_fxx_output(date, "error", error="日期格式錯誤，請使用 YYYY-MM-DD")
+
+    try:
+        # 2. 發送 HTTP 請求
+        response = requests.get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+
+        # 3. 解析資料
+        tables = pd.read_html(response.text)
+        if len(tables) == 0:
+            return format_fxx_output(date, "failed", error="該日無交易資料（可能是假日或休市日）")
+
+        # 4. 提取資料
+        data = extract_data(tables[0], date)
+        if data.get("status") == "success":
+            return format_fxx_output(date, "success", data=data.get("data"))
+        else:
+            return format_fxx_output(date, "failed", error=data.get("error", "資料提取失敗"))
+
+    except requests.Timeout:
+        return format_fxx_output(date, "error", error="連線逾時，請檢查網路連線")
+
+    except requests.HTTPError as e:
+        return format_fxx_output(date, "error", error=f"HTTP 錯誤 {e.response.status_code}")
+
+    except Exception as e:
+        logger.exception("未預期的錯誤")
+        return format_fxx_output(date, "error", error=f"未預期的錯誤: {str(e)}")
 ```
+
+**錯誤處理規範**：
+- ✅ 所有錯誤都必須轉換為文字格式
+- ✅ 使用適當的錯誤訊息（中文）
+- ❌ 不可讓例外向上傳播
+- ❌ 不可回傳 None 或其他類型
 
 ## 🎯 特殊處理邏輯
 （如果有特殊的資料處理需求，請在此說明）

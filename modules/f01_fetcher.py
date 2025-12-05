@@ -19,7 +19,6 @@ f01_fetcher.py
 """
 
 import sys
-import json
 import logging
 import requests
 import pandas as pd
@@ -36,6 +35,31 @@ logging.basicConfig(
     format='%(asctime)s [%(levelname)s] %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+def format_f01_output(date: str, status: str, data: Optional[Dict] = None, error: Optional[str] = None) -> str:
+    """
+    格式化 F01 輸出為統一文字格式
+
+    Args:
+        date: 日期 (YYYY-MM-DD)
+        status: 狀態 ("success" / "failed" / "error")
+        data: 成功時的資料字典
+        error: 失敗時的錯誤訊息
+
+    Returns:
+        統一格式文字字串
+    """
+    date_formatted = date.replace("-", ".")  # 2025-12-03 → 2025.12.03
+
+    if status == "success" and data:
+        net = data.get("net_position", 0)
+        long_pos = data.get("long_position", 0)
+        short_pos = data.get("short_position", 0)
+        return f"[ {date_formatted}  F01台指期外資淨額 {net:,} 口（多方 {long_pos:,}，空方 {short_pos:,}）   source: TAIFEX ]"
+    else:
+        error_msg = error or "未知錯誤"
+        return f"[ {date_formatted}  F01 錯誤: {error_msg}   source: TAIFEX ]"
 
 
 def convert_to_int(value) -> int:
@@ -256,34 +280,23 @@ def extract_foreign_data_single(df: pd.DataFrame, date: str) -> Dict:
         }
 
 
-def fetch(date: str) -> dict:
+def fetch(date: str) -> str:
     """
     抓取指定日期的台指期貨外資未平倉資料
-    
+
     Args:
         date: 日期字串 (YYYY-MM-DD)
-        
+
     Returns:
-        結果字典，格式:
-        {
-            "module": "f01",
-            "date": "2025-12-01",
-            "status": "success|failed|error",
-            "summary": "摘要訊息（中文）",
-            "data": {...},
-            "source": "TAIFEX"
-        }
+        統一格式的文字字串
+        成功時: [ YYYY.MM.DD  F01台指期外資淨額 {net} 口（多方 {long}，空方 {short}）   source: TAIFEX ]
+        失敗時: [ YYYY.MM.DD  F01 錯誤: {錯誤訊息}   source: TAIFEX ]
     """
     # 驗證日期格式
     try:
-        date_obj = datetime.strptime(date, "%Y-%m-%d")
+        datetime.strptime(date, "%Y-%m-%d")
     except ValueError:
-        return {
-            "module": MODULE_ID,
-            "date": date,
-            "status": "error",
-            "error": "日期格式錯誤，請使用 YYYY-MM-DD"
-        }
+        return format_f01_output(date, "error", error="日期格式錯誤，請使用 YYYY-MM-DD")
     
     # 轉換日期格式為 TAIFEX 格式
     url_date = date.replace('-', '/')
@@ -312,32 +325,17 @@ def fetch(date: str) -> dict:
             soup = BeautifulSoup(response.text, 'html.parser')
             table_elements = soup.find_all('table')
             if not table_elements:
-                return {
-                    "module": MODULE_ID,
-                    "date": date,
-                    "status": "failed",
-                    "error": "該日無交易資料（可能是假日或休市日）"
-                }
+                return format_f01_output(date, "failed", error="該日無交易資料（可能是假日或休市日）")
             tables = [pd.read_html(str(table))[0] for table in table_elements]
         except Exception as e:
             logger.debug(f"解析失敗，嘗試備選方案: {e}")
             try:
                 tables = pd.read_html(response.text)
             except Exception:
-                return {
-                    "module": MODULE_ID,
-                    "date": date,
-                    "status": "error",
-                    "error": f"無法解析 HTML 表格: {str(e)}"
-                }
-        
+                return format_f01_output(date, "error", error=f"無法解析 HTML 表格: {str(e)}")
+
         if len(tables) == 0:
-            return {
-                "module": MODULE_ID,
-                "date": date,
-                "status": "failed",
-                "error": "該日無交易資料（可能是假日或休市日）"
-            }
+            return format_f01_output(date, "failed", error="該日無交易資料（可能是假日或休市日）")
         
         # 取得第一個表格（通常是主要資料表）
         df = tables[0]
@@ -345,51 +343,32 @@ def fetch(date: str) -> dict:
         # 根據表格類型處理
         if isinstance(df.columns, pd.MultiIndex):
             logger.debug("偵測到 MultiIndex 表頭")
-            return extract_foreign_data_multiindex(df, date)
+            result_dict = extract_foreign_data_multiindex(df, date)
         else:
             logger.debug("偵測到單層表頭")
-            return extract_foreign_data_single(df, date)
-    
+            result_dict = extract_foreign_data_single(df, date)
+
+        # 轉換為文字格式
+        if result_dict.get("status") == "success":
+            return format_f01_output(date, "success", data=result_dict.get("data"))
+        else:
+            return format_f01_output(date, "failed", error=result_dict.get("error", "未知錯誤"))
+
     except requests.Timeout:
-        return {
-            "module": MODULE_ID,
-            "date": date,
-            "status": "error",
-            "error": "連線逾時，請檢查網路連線"
-        }
-    
+        return format_f01_output(date, "error", error="連線逾時，請檢查網路連線")
+
     except requests.HTTPError as e:
-        return {
-            "module": MODULE_ID,
-            "date": date,
-            "status": "error",
-            "error": f"HTTP 錯誤 {e.response.status_code}"
-        }
-    
+        return format_f01_output(date, "error", error=f"HTTP 錯誤 {e.response.status_code}")
+
     except requests.RequestException as e:
-        return {
-            "module": MODULE_ID,
-            "date": date,
-            "status": "error",
-            "error": f"網路請求失敗: {str(e)}"
-        }
-    
+        return format_f01_output(date, "error", error=f"網路請求失敗: {str(e)}")
+
     except ValueError as e:
-        return {
-            "module": MODULE_ID,
-            "date": date,
-            "status": "error",
-            "error": f"HTML 解析失敗: {str(e)}"
-        }
-    
+        return format_f01_output(date, "error", error=f"HTML 解析失敗: {str(e)}")
+
     except Exception as e:
         logger.exception("未預期的錯誤")
-        return {
-            "module": MODULE_ID,
-            "date": date,
-            "status": "error",
-            "error": f"未預期的錯誤: {str(e)}"
-        }
+        return format_f01_output(date, "error", error=f"未預期的錯誤: {str(e)}")
 
 
 def main():
@@ -399,15 +378,16 @@ def main():
     else:
         # 預設測試日期
         test_date = '2025-11-28'
-    
+
     print(f"測試日期: {test_date}")
     print("-" * 60)
-    
+
     result = fetch(test_date)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-    
-    # 根據狀態設定退出碼
-    sys.exit(0 if result.get("status") == "success" else 1)
+    # 直接輸出文字（不再使用 json.dumps）
+    print(result)
+
+    # 判斷成功/失敗（檢查是否包含「錯誤:」）
+    sys.exit(0 if "錯誤:" not in result else 1)
 
 
 if __name__ == '__main__':
