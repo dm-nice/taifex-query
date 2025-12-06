@@ -73,6 +73,8 @@ C:\Taifex\
 ├── run.py                      # 主程式 - 執行所有模組
 ├── README.md                   # 本文件（專案入口）
 ├── CLAUDE_CONFIG.md            # Claude Code 配置說明
+├── CLAUDE_RESPONSE_GUIDE.md    # Claude AI 回應規範文件
+├── Claude跨討論組_log.md       # 跨討論組記錄
 │
 ├── .claude/                    # Claude Code 配置目錄
 │   └── settings.json           # 專案設定
@@ -81,10 +83,12 @@ C:\Taifex\
 │   └── f01_fetcher.py         # F01: 台指期外資未平倉
 │
 ├── dev/                        # 開發文件與驗收模組
+│   ├── README.md               # 開發目錄說明
 │   ├── 共同開發規範書_V1.md   # 開發規範（含快速參考）⭐
-│   ├── _template_spec.md      # 新模組開發範本
-│   └── f01_package/
-│       └── f01_fetcher_開發規範書.md
+│   ├── _template_spec.md      # 新模組規格書範本
+│   ├── _template.py            # 新模組程式碼範本
+│   ├── f01_package/            # F01 開發包（範例）
+│   └── f14_package/            # F14 開發包（開發中）
 │
 ├── data/                       # 輸出資料目錄（自動生成）
 │   ├── YYYY-MM-DD_f01_fetcher.txt
@@ -109,71 +113,85 @@ C:\Taifex\
 #### 🚀 使用這個專案
 - **[README.md](README.md)** - 本文件，安裝和使用指南
 
-#### ⚡ 開發新模組（含快速參考）
+#### ⚡ 開發新模組
+- **[開發目錄說明](dev/README.md)** - 開發流程、範例、常見錯誤
 - **[共同開發規範書](dev/共同開發規範書_V1.md)** ⭐
   - 📋 快速參考章節（10分鐘入門）
   - 📚 完整開發規範（深入學習）
-  - 🔧 錯誤處理、測試規範
+- **[程式碼範本](dev/_template.py)** - 新模組程式碼起點
+- **[規格書範本](dev/_template_spec.md)** - 新模組規格書模板
 
-#### 📝 開發輔助文件
-- **[模組開發模板](dev/_template_spec.md)** - 新模組開發範本
-- **[F01 開發規範](dev/f01_package/f01_fetcher_開發規範書.md)** - F01 模組完整範例
+#### 📚 範例參考
+- **[F01 程式碼](modules/f01_fetcher.py)** - 最佳實踐範例
+- **[F01 規格書](dev/f01_package/f01_fetcher_開發規範書.md)** - 完整規格範例
 
 #### ⚙️ 設定 Claude Code
-- **[CLAUDE_CONFIG.md](CLAUDE_CONFIG.md)** - Claude Code 配置檔說明
+- **[CLAUDE_CONFIG.md](CLAUDE_CONFIG.md)** - Claude Code 配置說明
 
 ### 📋 文件關係圖
 
 ```
-README.md (入口)
+README.md (專案入口)
     ↓
-    ├─ 開發模組 → dev/共同開發規範書_V1.md (完整規範 + 快速參考)
-    │                    ├─ 快速參考（10分鐘）
-    │                    └─ 完整規範（深入學習）
+    ├─ 使用專案 → 安裝、執行、輸出說明（本文件）
     │
-    ├─ 參考範例 → dev/_template_spec.md (開發模板)
-    │           → dev/f01_package/ (F01 範例)
+    ├─ 開發模組 → dev/README.md (開發目錄總覽) ⭐
+    │           → dev/共同開發規範書_V1.md (完整規範)
+    │           → dev/_template.py (程式碼範本)
+    │           → dev/_template_spec.md (規格書範本)
     │
-    └─ 設定 Claude → CLAUDE_CONFIG.md (配置說明)
+    ├─ 範例參考 → modules/f01_fetcher.py (程式碼範例)
+    │           → dev/f01_package/ (規格書範例)
+    │
+    ├─ Claude Code → CLAUDE_CONFIG.md (配置說明)
+    │              → CLAUDE_RESPONSE_GUIDE.md (AI 回應規範)
+    │
+    └─ 討論記錄 → Claude跨討論組_log.md (跨對話記錄)
 ```
 
 ## 🔨 開發新模組
 
-### 步驟
+### 快速入門（5 步驟）
 
-1. **閱讀規範**
-   - [共同開發規範書](dev/共同開發規範書_V1.md) - 開頭有快速參考章節 ⭐
+1. **閱讀開發指南** ⭐
+   - [dev/README.md](dev/README.md) - 開發流程總覽
+   - [共同開發規範書](dev/共同開發規範書_V1.md) - 快速參考章節（10分鐘）
 
-2. **複製模板**
+2. **創建開發包**
    ```bash
-   # 複製模板到 dev 目錄
-   copy dev\_template_spec.md dev\fXX_package\fXX_fetcher_開發規範書.md
+   mkdir dev\f02_package
    ```
 
-3. **參考範例**
-   - 程式碼：[modules/f01_fetcher.py](modules/f01_fetcher.py)
-   - 規格書：[f01_fetcher_開發規範書.md](dev/f01_package/f01_fetcher_開發規範書.md)
+3. **複製範本**
+   ```bash
+   copy dev\_template.py dev\f02_package\f02_fetcher_dev.py
+   copy dev\_template_spec.md dev\f02_package\f02_fetcher_開發規範書.md
+   ```
 
-4. **實作模組**
+4. **實作程式碼**
    ```python
    def fetch(date: str) -> str:
-       """
-       抓取指定日期的資料
-
-       Returns:
-           統一格式的文字字串
-           格式: [ YYYY.MM.DD  FXX{描述}   source: {來源} ]
-       """
+       """抓取指定日期的資料"""
+       # 實作邏輯...
+       return f"[ {date_formatted}  F02{描述}   source: {來源} ]"
    ```
 
-### 必須遵循的規範
+5. **測試驗收**
+   ```bash
+   python dev\f02_package\f02_fetcher_dev.py 2025-12-03
+   python run.py 2025-12-03 dev --module f02_fetcher_dev
+   ```
 
-✅ **回傳類型**：必須是 `str`（統一文字格式）
-✅ **錯誤處理**：所有錯誤都轉換為文字格式，不拋出例外
-✅ **日期格式**：輸入 `YYYY-MM-DD` → 輸出 `YYYY.MM.DD`
-✅ **模組代號**：大寫（F01, F02...）
+### 四大核心規範
 
-詳細規範請參考 [共同開發規範書](dev/共同開發規範書_V1.md)
+1. ✅ **回傳類型**：必須是 `str`（統一文字格式）
+2. ✅ **錯誤處理**：所有錯誤都轉換為文字格式，不拋出例外
+3. ✅ **日期格式**：輸入 `YYYY-MM-DD` → 輸出 `YYYY.MM.DD`
+4. ✅ **模組代號**：大寫（F01, F02...）
+
+詳細說明請參考：
+- [dev/README.md](dev/README.md) - 完整開發流程、常見錯誤
+- [共同開發規範書](dev/共同開發規範書_V1.md) - 詳細技術規範
 
 ## 🧪 測試
 
