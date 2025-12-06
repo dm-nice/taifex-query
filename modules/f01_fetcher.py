@@ -19,11 +19,17 @@ f01_fetcher.py
 """
 
 import sys
+import io
 import logging
 import requests
 import pandas as pd
 from typing import Dict, Optional
 from datetime import datetime
+
+# 設定 UTF-8 輸出（解決 Windows 終端亂碼）
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 # 模組識別
 MODULE_ID = "f01"
@@ -32,7 +38,8 @@ MODULE_NAME = "f01_fetcher"
 # 設定 logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s'
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    encoding='utf-8'
 )
 logger = logging.getLogger(__name__)
 
@@ -54,9 +61,8 @@ def format_f01_output(date: str, status: str, data: Optional[Dict] = None, error
 
     if status == "success" and data:
         net = data.get("net_position", 0)
-        long_pos = data.get("long_position", 0)
-        short_pos = data.get("short_position", 0)
-        return f"[ {date_formatted}  F01台指期外資淨額 {net:,} 口（多方 {long_pos:,}，空方 {short_pos:,}）   source: TAIFEX ]"
+        source = data.get("source", "TAIFEX")
+        return f"F01: 台指期貨外資 [未平倉] [多空淨額] : {net:,} 口 [{source}]"
     else:
         error_msg = error or "未知錯誤"
         return f"[ {date_formatted}  F01 錯誤: {error_msg}   source: TAIFEX ]"
@@ -181,7 +187,8 @@ def extract_foreign_data_multiindex(df: pd.DataFrame, date: str) -> Dict:
             "data": {
                 "long_position": long_pos,
                 "short_position": short_pos,
-                "net_position": net_pos
+                "net_position": net_pos,
+                "source": "TAIFEX"
             },
             "source": "TAIFEX"
         }
@@ -266,7 +273,8 @@ def extract_foreign_data_single(df: pd.DataFrame, date: str) -> Dict:
             "data": {
                 "long_position": long_pos,
                 "short_position": short_pos,
-                "net_position": net_pos
+                "net_position": net_pos,
+                "source": "TAIFEX"
             },
             "source": "TAIFEX"
         }

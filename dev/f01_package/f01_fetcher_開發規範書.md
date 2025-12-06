@@ -38,11 +38,11 @@ https://www.taifex.com.tw/cht/3/futContractsDate?queryType=1&marketCode=0&date=Y
 | 目標資料 | 未平倉餘額 > 多方 > 口數 | 多方未平倉口數 | integer |
 | 目標資料 | 未平倉餘額 > 空方 > 口數 | 空方未平倉口數 | integer |
 
-### 回傳資料格式（統一文字格式）
+### 回傳資料格式（統一文字格式 v5.0）
 
-**✅ 成功時**:
+**✅ 成功時**（新格式）:
 ```
-[ 2025.12.03  F01台指期外資淨額 -29,439 口（多方 19,214，空方 48,653）   source: TAIFEX ]
+F01: 台指期貨外資 [未平倉] [多空淨額] : -29,439 口 [TAIFEX]
 ```
 
 **❌ 失敗時**:
@@ -52,15 +52,18 @@ https://www.taifex.com.tw/cht/3/futContractsDate?queryType=1&marketCode=0&date=Y
 
 **⚠️ 錯誤時**:
 ```
-[ 2025.12.03  F01 錯誤: 連線逾時，請檢查網路連線   source: TAIFEX ]
+[ 2025.12.03  F01 錯誤: 連線逾時,請檢查網路連線   source: TAIFEX ]
 ```
 
-**格式說明**:
+**格式說明（v5.0 新格式）**:
 - 回傳類型: `str` (字串)
-- 日期: 轉換為 `YYYY.MM.DD` 格式
-- 模組代號: `F01` (大寫)
-- 描述: `台指期外資淨額 {net} 口（多方 {long}，空方 {short}）`
-- 數值格式: 使用千分位逗號 (如 `-29,439`)
+- 成功格式: `F01: 台指期貨外資 [未平倉] [多空淨額] : {net:,} 口 [TAIFEX]`
+  - 模組代號: `F01` (大寫)
+  - 標題: `台指期貨外資`
+  - 標籤: `[未平倉] [多空淨額]`
+  - 數值: 淨額口數，使用千分位逗號 (如 `-29,439`)
+  - 來源: `[TAIFEX]`
+- 錯誤格式: 保持舊格式 `[ YYYY.MM.DD  F01 錯誤: {error}   source: TAIFEX ]`
 
 **重要**:
 - ✅ 回傳類型必須是 `str`
@@ -205,11 +208,11 @@ short_pos = convert_to_int(foreign_rows[short_col].values[0])
 
 ### 必測日期
 
-| 測試日期 | 預期狀態 | 預期資料 | 備註 |
+| 測試日期 | 預期狀態 | 預期輸出（v5.0 新格式） | 備註 |
 |---------|---------|---------|------|
-| 2025-12-02 | success | long: 18808<br>short: 48032<br>net: -29224 | 正常交易日 |
-| 2025-11-30 | failed | - | 週六，無交易 |
-| 2025-11-28 | success | （實際資料） | 可用於開發測試 |
+| 2025-12-05 | success | `F01: 台指期貨外資 [未平倉] [多空淨額] : -26,823 口 [TAIFEX]` | 正常交易日 |
+| 2025-11-30 | failed | `[ 2025.11.30  F01 錯誤: 該日無交易資料（可能是假日或休市日）   source: TAIFEX ]` | 週六，無交易 |
+| 2025-12-04 | success | `F01: 台指期貨外資 [未平倉] [多空淨額] : -26,823 口 [TAIFEX]` | 可用於開發測試 |
 
 ### 測試指令
 
@@ -317,16 +320,17 @@ def fetch(date: str) -> dict:
 from typing import Dict, Optional
 
 def format_f01_output(date: str, status: str, data: Optional[Dict] = None, error: Optional[str] = None) -> str:
-    """格式化 F01 輸出為統一文字格式"""
+    """格式化 F01 輸出為統一文字格式 v5.0"""
     date_formatted = date.replace("-", ".")  # 2025-12-03 → 2025.12.03
 
     if status == "success" and data:
         net = data.get("net_position", 0)
-        long_pos = data.get("long_position", 0)
-        short_pos = data.get("short_position", 0)
-        return f"[ {date_formatted}  F01台指期外資淨額 {net:,} 口（多方 {long_pos:,}，空方 {short_pos:,}）   source: TAIFEX ]"
+        source = data.get("source", "TAIFEX")
+        # v5.0 新格式：簡潔明瞭，去掉日期和多空細節
+        return f"F01: 台指期貨外資 [未平倉] [多空淨額] : {net:,} 口 [{source}]"
     else:
         error_msg = error or "未知錯誤"
+        # 錯誤時保持舊格式
         return f"[ {date_formatted}  F01 錯誤: {error_msg}   source: TAIFEX ]"
 
 
@@ -531,6 +535,13 @@ def fetch(date: str) -> dict:  # 舊版回傳 dict
 
 ## 📝 版本更新記錄
 
+### Version 5.0 (2025-12-06)
+- ✅ 更新為新的簡潔格式：`F01: 台指期貨外資 [未平倉] [多空淨額] : {net} 口 [TAIFEX]`
+- ✅ 移除輸出中的日期和多空細節（簡化輸出）
+- ✅ 保持錯誤格式不變（向後兼容）
+- ✅ 更新 format_f01_output() 函式
+- ✅ 與 modules/f01_fetcher.py 實作同步
+
 ### Version 4.0 (2025-12-05)
 - ✅ 改為統一文字格式輸出
 - ✅ fetch() 回傳 `str` 而非 `dict`
@@ -553,5 +564,5 @@ def fetch(date: str) -> dict:  # 舊版回傳 dict
 
 ---
 
-**最後更新**: 2025-12-05
-**版本**: 3.0（完整更新 - 反映最新實作）
+**最後更新**: 2025-12-06
+**版本**: 5.0（簡潔格式 - 反映最新實作）

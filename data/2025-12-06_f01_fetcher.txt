@@ -1,1 +1,1 @@
-[ 2025.12.04  F01 錯誤: 未預期的錯誤: lxml not found, please install it   source: TAIFEX ]
+F01: 台指期貨外資 [未平倉] [多空淨額] : -26,823 口 [TAIFEX]

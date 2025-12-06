@@ -181,25 +181,33 @@ def validate_text_format(result: Any, module_name: str, query_date: str) -> Tupl
 
     # 1. 字串格式（新模組）
     if isinstance(result, str):
+        # 接受兩種格式：
+        # 舊格式：[ YYYY.MM.DD  FXX...   source: XXX ]
+        # 新格式：FXX: ... [source]
         if result.startswith("[") and result.endswith("]"):
+            # 舊格式驗證
             if date_formatted in result and module_id in result:
                 status = "failed" if "錯誤:" in result else "success"
                 return result, status
+        elif result.startswith(module_id + ":"):
+            # 新格式驗證（以模組ID開頭）
+            status = "failed" if "錯誤:" in result else "success"
+            return result, status
 
-        # 格式不正確
-        logger.warning(f"模組回傳的文字格式不正確")
+        # 格式不正確 - 需要傳入 logger 或移除 logger 調用
+        # 暫時移除 logger 調用以避免錯誤
         text = f"[ {date_formatted}  {module_id} 錯誤: 模組回傳格式錯誤   source: UNKNOWN ]"
         return text, "invalid"
 
     # 2. dict 格式（舊模組，向後兼容）
     elif isinstance(result, dict):
-        logger.info(f"偵測到舊格式 (dict)，自動轉換為文字格式")
+        # 移除 logger 調用以避免錯誤
         return convert_dict_to_text(result, module_short, query_date), \
                result.get("status", "error")
 
     # 3. 無效類型
     else:
-        logger.error(f"無效的回傳類型: {type(result)}")
+        # 移除 logger 調用以避免錯誤
         text = f"[ {date_formatted}  {module_id} 錯誤: 返回格式錯誤   source: UNKNOWN ]"
         return text, "invalid"
 
@@ -321,7 +329,7 @@ def execute_module(module_name: str, query_date: str, logger: logging.Logger) ->
 
     except Exception as e:
         logger.error(f"執行異常: {str(e)}")
-        logger.debug(traceback.format_exc())
+        logger.error(traceback.format_exc())
 
         module_id = extract_module_id(module_short)
         date_formatted = query_date.replace("-", ".")

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python modules/f01_fetcher.py:*)",
+      "Bash(pip install:*)",
+      "Bash(python run.py:*)",
+      "Bash(python:*)",
+      "Bash(findstr:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
