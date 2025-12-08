@@ -25,6 +25,10 @@ jobs:
   run-taifex:
     runs-on: ubuntu-latest
     
+    # 設定時區為台北時間
+    env:
+      TZ: Asia/Taipei
+    
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
