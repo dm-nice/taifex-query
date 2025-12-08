@@ -46,26 +46,28 @@ logger = logging.getLogger(__name__)
 
 def format_f01_output(date: str, status: str, data: Optional[Dict] = None, error: Optional[str] = None) -> str:
     """
-    格式化 F01 輸出為統一文字格式
+    格式化 F01 輸出為統一文字格式 v5.0
 
     Args:
-        date: 日期 (YYYY-MM-DD)
+        date: 日期 (YYYY-MM-DD) - 僅用於錯誤訊息（成功時不顯示日期）
         status: 狀態 ("success" / "failed" / "error")
         data: 成功時的資料字典
         error: 失敗時的錯誤訊息
 
     Returns:
-        統一格式文字字串
+        統一格式文字字串 v5.0
+        成功時: F01: 台指期貨外資 [未平倉] [多空淨額] : -26,823 口 [TAIFEX]
+        失敗時: F01 錯誤: {錯誤訊息} [TAIFEX]
     """
-    date_formatted = date.replace("-", ".")  # 2025-12-03 → 2025.12.03
-
     if status == "success" and data:
         net = data.get("net_position", 0)
         source = data.get("source", "TAIFEX")
+        # v5.0 成功格式：移除日期，保持簡潔
         return f"F01: 台指期貨外資 [未平倉] [多空淨額] : {net:,} 口 [{source}]"
     else:
         error_msg = error or "未知錯誤"
-        return f"[ {date_formatted}  F01 錯誤: {error_msg}   source: TAIFEX ]"
+        # v5.0 錯誤格式：移除日期和中括號，統一簡潔風格
+        return f"F01 錯誤: {error_msg} [TAIFEX]"
 
 
 def convert_to_int(value) -> int:
@@ -296,9 +298,12 @@ def fetch(date: str) -> str:
         date: 日期字串 (YYYY-MM-DD)
 
     Returns:
-        統一格式的文字字串
-        成功時: [ YYYY.MM.DD  F01台指期外資淨額 {net} 口（多方 {long}，空方 {short}）   source: TAIFEX ]
-        失敗時: [ YYYY.MM.DD  F01 錯誤: {錯誤訊息}   source: TAIFEX ]
+        統一格式的文字字串 v5.0
+        成功時: F01: 台指期貨外資 [未平倉] [多空淨額] : -26,823 口 [TAIFEX]
+        失敗時: F01 錯誤: {錯誤訊息} [TAIFEX]
+
+    注意：
+        由於 TAIFEX API 限制，實際回傳的是最後交易日資料，而非指定日期資料
     """
     # 驗證日期格式
     try:
