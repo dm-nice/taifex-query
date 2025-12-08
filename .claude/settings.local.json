@@ -1,22 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python modules/f01_fetcher.py:*)",
-      "Bash(pip install:*)",
-      "Bash(python run.py:*)",
-      "Bash(python:*)",
-      "Bash(findstr:*)",
-      "Bash(dir /s /b nul)",
-      "Bash(del \"\\?\\c:\\Taifex\\nul\")",
-      "Bash(cmd /c del \"\\?\\c:\\Taifex\\nul\")",
-      "Bash(cmd /c \"if exist nul (echo File exists) else (echo File deleted successfully)\")",
-      "Bash(cat:*)",
-      "Bash(del test_output.txt)",
-      "Bash(rm:*)",
-      "Bash(powershell -Command \"Get-Content ''C:\\Taifex\\Claude跨討論組_log.md'' | Select-Object -Last 50\")",
-      "Bash(powershell -Command \"(Get-Content ''Claude跨討論組_log.md'' | Measure-Object -Line).Lines\")",
-      "Bash(dir:*)",
-      "Bash(grep:*)"
+      "Bash(powershell \"Get-ChildItem -Path ([Environment]::GetFolderPath(''ApplicationData'') + ''\\Code\\User\\globalStorage'') -Directory | Where-Object {$_Name -like ''*anthropic*'' -or $_Name -like ''*claude*''} | Select-Object -ExpandProperty FullName\")"
     ],
     "deny": [],
     "ask": []

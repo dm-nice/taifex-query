@@ -1,7 +1,7 @@
 # Taifex 專案開發討論記錄
 
 > **建立日期**: 2025-12-04
-> **最後更新**: 2025-12-07
+> **最後更新**: 2025-12-08
 > **用途**: 整合 Claude 跨討論組的討論內容與重要決策
 
 ---
@@ -540,6 +540,164 @@ python run.py --help
 ---
 
 #### 📅 討論記錄
+
+### 2025-12-08 (日) - GitHub Actions 自動化部署與時區問題處理
+
+> **執行者**: 🏗️ 架構專員 Claude (Architecture Specialist)
+
+#### 背景
+用戶要求設定 GitHub Actions 在每天 21:00 (台北時間) 自動執行 `run.py`,並將結果保存到 GitHub。
+
+#### 完成事項
+
+1. ✅ **建立 GitHub Actions 工作流程**
+   - 建立 `.github/workflows/daily-run.yml`
+   - 設定 cron 排程: `0 13 * * *` (UTC 13:00 = 台北 21:00)
+   - 支援手動觸發 (workflow_dispatch)
+   - 可選擇日期和執行模式 (production/dev)
+
+2. ✅ **配置執行環境**
+   - Python 3.9 環境設定
+   - 自動安裝依賴套件 (requests, pandas, pydantic, lxml)
+   - 設定時區環境變數 `TZ=Asia/Taipei`
+
+3. ✅ **實施結果保存機制**
+   - 上傳 Artifacts (保留 30 天)
+   - 自動 Git 提交並推送結果
+   - 雙重保障確保資料不遺失
+
+4. ✅ **處理時區問題**
+   - 嘗試使用 `touch` 命令修改檔案時間戳記
+   - 發現 ZIP 打包會保留 UTC 時間的限制
+   - 實施檔案名稱時間戳記方案 (YYYY-MM-DD_HHMM_module.txt)
+   - 加入詳細除錯訊息追蹤問題
+
+5. ✅ **本地測試驗證**
+   - 測試 run.py 本地執行 (成功)
+   - 驗證 YAML 語法正確
+   - 推送到 GitHub 並確認部署成功
+
+#### 技術重點
+
+**GitHub Actions 工作流程結構**:
+```yaml
+name: Daily Taifex Data Fetch
+
+on:
+  schedule:
+    - cron: '0 13 * * *'  # 每天 21:00 台北時間
+  workflow_dispatch:      # 支援手動觸發
+
+jobs:
+  run-taifex:
+    runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Taipei     # 設定時區
+    
+    steps:
+      - 安裝 Python 和依賴
+      - 執行 run.py
+      - 上傳 Artifacts
+      - Git 自動提交
+```
+
+**時區處理方案**:
+- 環境變數: `TZ=Asia/Taipei` (影響 date 命令和 Python datetime)
+- 檔案名稱: 加入時間戳記 `YYYY-MM-DD_HHMM` (不依賴檔案系統)
+- Git 提交: 保留正確的時間資訊
+
+**檔案命名格式升級**:
+```python
+# 修改前: 2025-12-08_f01_fetcher.txt
+# 修改後: 2025-12-08_2100_f01_fetcher.txt (包含執行時間)
+
+# run.py 修改
+current_time = datetime.now().strftime("%H%M")
+data_file = BASE_DIR / f"{exec_day}_{current_time}_{module_short}{suffix}.txt"
+```
+
+#### 決策
+
+**為什麼選擇 GitHub Actions**:
+1. 免費且可靠的自動化平台
+2. 與 Git repository 緊密整合
+3. 支援 cron 排程和手動觸發
+4. 提供 Artifacts 儲存功能
+
+**為什麼使用雙重保存機制** (Artifacts + Git):
+1. Artifacts: 方便下載,保留 30 天
+2. Git 提交: 永久保存,版本控制
+3. 互為備援,確保資料安全
+
+**為什麼在檔案名稱中加入時間戳記**:
+1. ZIP 打包會保留 UTC 時間戳記
+2. touch 命令無法解決 Artifacts 的時區問題
+3. 檔案名稱永遠可見,不受檔案系統影響
+4. 易於排序和管理
+
+**為什麼不繼續修正檔案時間戳記**:
+1. 用戶要求停止修改 ("不要改了先這樣")
+2. 功能已正常運作 (執行日期、資料內容都正確)
+3. Git 提交的時間是正確的
+4. 避免過度工程
+
+#### 驗證結果
+
+**本地測試**:
+- ✅ Python 3.9.0 環境正常
+- ✅ run.py 執行成功 (f01_fetcher 模組)
+- ✅ YAML 語法驗證通過
+
+**GitHub 部署**:
+- ✅ 工作流程檔案已推送 (commit adb4e06)
+- ✅ 時區設定已推送 (commit 2c15f52)
+- ✅ 檔案時間戳記嘗試 (commit 55ff6a1, 2bc2c71)
+- ✅ 檔案名稱時間戳記方案 (commit 55cd7fe)
+- ✅ 已有 2 次成功執行記錄
+
+**已知限制**:
+- ⚠️ Artifacts 中的檔案時間戳記顯示 UTC 時間
+- ✅ 但不影響功能 (資料正確、日期正確)
+- ✅ Git 提交的時間是正確的台北時間
+
+#### 文件完成狀態
+
+| 文件/程式 | 版本 | 狀態 |
+|-----------|------|------|
+| `.github/workflows/daily-run.yml` | v1.0 | ✅ 完成 |
+| `run.py` | - | ✅ 更新 (檔案名稱時間戳記) |
+| `walkthrough.md` (artifact) | - | ✅ 完成 |
+| `github_artifacts_guide.md` (artifact) | - | ✅ 完成 |
+| `timezone_fix.md` (artifact) | - | ✅ 完成 |
+| `debug_guide.md` (artifact) | - | ✅ 完成 |
+
+#### 經驗分享
+
+**關於 GitHub Actions 時區**:
+- ✅ 預設使用 UTC 時區
+- ✅ 需要設定 `TZ` 環境變數
+- ✅ 影響 `date` 命令和 Python `datetime.now()`
+- ⚠️ 不影響檔案系統時間戳記
+
+**關於 ZIP 打包時間戳記**:
+- ⚠️ `upload-artifact` 會保留檔案的原始時間戳記
+- ⚠️ ZIP 格式可能會轉換為 UTC 時間
+- ⚠️ `touch` 命令無法解決此問題
+- ✅ 解決方案: 在檔案名稱中包含時間資訊
+
+**關於自動化部署**:
+- ✅ 先本地測試,確認功能正常
+- ✅ 使用 workflow_dispatch 支援手動觸發
+- ✅ 加入除錯訊息方便追蹤問題
+- ✅ 雙重保存機制 (Artifacts + Git) 確保資料安全
+
+#### 待處理
+
+- [ ] 等待今晚 21:00 自動執行驗證
+- [ ] 確認 Git 自動提交功能正常
+- [ ] 監控執行穩定性
+
+---
 
 ### 2025-12-06 (五) - base.py 移除與 v4.0 升級
 

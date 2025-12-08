@@ -1,8 +1,7 @@
 name: Taifex Daily Update with README and Visualization
 
 on:
-  schedule:
-    - cron: "0 22 * * *"   # UTC 22:00 → 台灣時間隔天 06:00
+  # 僅允許手動觸發，停用自動排程
   workflow_dispatch:       # 手動觸發
 
 jobs:

@@ -73,15 +73,19 @@ jobs:
           echo "更新後的檔案時間:"
           ls -l data/*.txt data/*.log 2>/dev/null || true
           echo "✅ 檔案時間戳記已更新"
+
+      - name: 📦 Pack results (tar.gz keeps epoch timestamps)
+        run: |
+          echo "建立 tar.gz 封裝 (保留 mtime，下載後依本機時區顯示)..."
+          tar -czf taifex-data-${{ github.run_number }}.tar.gz data/
+          ls -l taifex-data-${{ github.run_number }}.tar.gz
       
       - name: 📤 Upload results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: taifex-data-${{ github.run_number }}
-          path: |
-            data/*.txt
-            data/*.log
+          path: taifex-data-${{ github.run_number }}.tar.gz
           retention-days: 30
       
       - name: 💾 Commit and push results (optional)
