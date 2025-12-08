@@ -57,6 +57,11 @@ jobs:
           else
             python run.py "$DATE"
           fi
+          
+          # 更新檔案時間戳記為台北時間
+          echo "📅 更新檔案時間戳記為台北時間..."
+          find data -type f \( -name "*.txt" -o -name "*.log" \) -exec touch -m {} \;
+          echo "✅ 檔案時間戳記已更新"
       
       - name: 📤 Upload results
         uses: actions/upload-artifact@v4
