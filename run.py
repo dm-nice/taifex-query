@@ -272,8 +272,17 @@ def save_result(result: str, module_name: str, exec_day: str, dev_mode: bool) ->
     suffix = "_dev" if dev_mode else ""
     module_short = module_name.split(".")[-1]
 
-    # 改用 .txt 副檔名
-    data_file = BASE_DIR / f"{exec_day}_{module_short}{suffix}.txt"
+    # 取得當前時間戳記（台北時間）
+    from datetime import datetime
+    import os
+    
+    # 檢查是否有 TZ 環境變數設定
+    tz_info = os.environ.get('TZ', 'UTC')
+    current_time = datetime.now().strftime("%H%M")
+    
+    # 檔案名稱格式: YYYY-MM-DD_HHMM_模組名稱.txt
+    # 例如: 2025-12-08_2100_f01_fetcher.txt
+    data_file = BASE_DIR / f"{exec_day}_{current_time}_{module_short}{suffix}.txt"
 
     # 直接寫入文字
     with open(data_file, "w", encoding="utf-8") as f:
@@ -380,9 +389,10 @@ def run(query_date: str, dev_mode: bool = False, only_module: Optional[str] = No
     mode = "驗收模式" if dev_mode else "正式模式"
     exec_day = datetime.now().strftime("%Y-%m-%d")
     exec_time = datetime.now().strftime(DATE_FORMAT)
+    exec_time_short = datetime.now().strftime("%H%M")  # 用於檔案名稱
     
-    # 設定日誌
-    log_file = BASE_DIR / f"{exec_day}_run{'_dev' if dev_mode else ''}.log"
+    # 設定日誌 - 檔案名稱包含時間戳記
+    log_file = BASE_DIR / f"{exec_day}_{exec_time_short}_run{'_dev' if dev_mode else ''}.log"
     logger = setup_logger(log_file)
     
     # 統計計數器
