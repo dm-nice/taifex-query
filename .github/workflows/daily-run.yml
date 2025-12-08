@@ -60,7 +60,18 @@ jobs:
           
           # 更新檔案時間戳記為台北時間
           echo "📅 更新檔案時間戳記為台北時間..."
+          echo "當前時間 (台北): $(date '+%Y-%m-%d %H:%M:%S')"
+          
+          # 顯示更新前的檔案時間
+          echo "更新前的檔案時間:"
+          ls -l data/*.txt data/*.log 2>/dev/null || true
+          
+          # 更新檔案時間戳記
           find data -type f \( -name "*.txt" -o -name "*.log" \) -exec touch -m {} \;
+          
+          # 顯示更新後的檔案時間
+          echo "更新後的檔案時間:"
+          ls -l data/*.txt data/*.log 2>/dev/null || true
           echo "✅ 檔案時間戳記已更新"
       
       - name: 📤 Upload results
