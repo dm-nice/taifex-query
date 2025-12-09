@@ -7,15 +7,29 @@ f01_fetcher.py
 - 提供 fetch(date: str) -> dict 統一介面
 - 支援 MultiIndex 和單層表頭兩種格式
 - 完整錯誤處理和日誌記錄
+
+【當前限制】
+- 本模組使用的 futContractsDate API 端點無視日期參數
+- 無論查詢哪一天，都只返回最後交易日的資料
+- 若要支援歷史日期查詢，需要使用 Selenium 或其他完整瀏覽器自動化工具
+
+【使用方式】
+- 調用 fetch(date) 方法，但返回的永遠是最後交易日的資料
+- 若要查詢特定日期，需要改用其他資料來源或升級至 Selenium 版本
 """
 
 import sys
-import json
+import io
 import logging
 import requests
 import pandas as pd
 from typing import Dict, Optional
 from datetime import datetime
+
+# 設定 UTF-8 輸出（解決 Windows 終端亂碼）
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 # 模組識別
 MODULE_ID = "f01"
@@ -24,9 +38,36 @@ MODULE_NAME = "f01_fetcher"
 # 設定 logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s'
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    encoding='utf-8'
 )
 logger = logging.getLogger(__name__)
+
+
+def format_f01_output(date: str, status: str, data: Optional[Dict] = None, error: Optional[str] = None) -> str:
+    """
+    格式化 F01 輸出為統一文字格式 v5.0
+
+    Args:
+        date: 日期 (YYYY-MM-DD) - 僅用於錯誤訊息（成功時不顯示日期）
+        status: 狀態 ("success" / "failed" / "error")
+        data: 成功時的資料字典
+        error: 失敗時的錯誤訊息
+
+    Returns:
+        統一格式文字字串 v5.0
+        成功時: F01: 台指期貨外資 [未平倉] [多空淨額] : -26,823 口 [TAIFEX]
+        失敗時: F01 錯誤: {錯誤訊息} [TAIFEX]
+    """
+    if status == "success" and data:
+        net = data.get("net_position", 0)
+        source = data.get("source", "TAIFEX")
+        # v5.0 成功格式：移除日期，保持簡潔
+        return f"F01: 台指期貨外資 [未平倉] [多空淨額] : {net:,} 口 [{source}]"
+    else:
+        error_msg = error or "未知錯誤"
+        # v5.0 錯誤格式：移除日期和中括號，統一簡潔風格
+        return f"F01 錯誤: {error_msg} [TAIFEX]"
 
 
 def convert_to_int(value) -> int:
@@ -148,7 +189,8 @@ def extract_foreign_data_multiindex(df: pd.DataFrame, date: str) -> Dict:
             "data": {
                 "long_position": long_pos,
                 "short_position": short_pos,
-                "net_position": net_pos
+                "net_position": net_pos,
+                "source": "TAIFEX"
             },
             "source": "TAIFEX"
         }
@@ -233,7 +275,8 @@ def extract_foreign_data_single(df: pd.DataFrame, date: str) -> Dict:
             "data": {
                 "long_position": long_pos,
                 "short_position": short_pos,
-                "net_position": net_pos
+                "net_position": net_pos,
+                "source": "TAIFEX"
             },
             "source": "TAIFEX"
         }
@@ -247,59 +290,65 @@ def extract_foreign_data_single(df: pd.DataFrame, date: str) -> Dict:
         }
 
 
-def fetch(date: str) -> dict:
+def fetch(date: str) -> str:
     """
     抓取指定日期的台指期貨外資未平倉資料
-    
+
     Args:
         date: 日期字串 (YYYY-MM-DD)
-        
+
     Returns:
-        結果字典，格式:
-        {
-            "module": "f01",
-            "date": "2025-12-01",
-            "status": "success|failed|error",
-            "summary": "摘要訊息（中文）",
-            "data": {...},
-            "source": "TAIFEX"
-        }
+        統一格式的文字字串 v5.0
+        成功時: F01: 台指期貨外資 [未平倉] [多空淨額] : -26,823 口 [TAIFEX]
+        失敗時: F01 錯誤: {錯誤訊息} [TAIFEX]
+
+    注意：
+        由於 TAIFEX API 限制，實際回傳的是最後交易日資料，而非指定日期資料
     """
     # 驗證日期格式
     try:
-        date_obj = datetime.strptime(date, "%Y-%m-%d")
+        datetime.strptime(date, "%Y-%m-%d")
     except ValueError:
-        return {
-            "module": MODULE_ID,
-            "date": date,
-            "status": "error",
-            "error": "日期格式錯誤，請使用 YYYY-MM-DD"
-        }
+        return format_f01_output(date, "error", error="日期格式錯誤，請使用 YYYY-MM-DD")
     
     # 轉換日期格式為 TAIFEX 格式
     url_date = date.replace('-', '/')
+    # 使用原始的 futContractsDate 端點（已驗證能正確工作）
     url = f"https://www.taifex.com.tw/cht/3/futContractsDate?queryType=1&marketCode=0&date={url_date}"
     
     try:
         # 發送 HTTP 請求
         logger.info(f"正在抓取 {date} 的資料...")
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
+        
         response = requests.get(url, headers=headers, timeout=30)
         response.raise_for_status()
         response.encoding = "utf-8"
         
-        # 解析 HTML 表格
-        tables = pd.read_html(response.text)
-        
+        # 解析 HTML 表格（使用 BeautifulSoup 作為可靠方案）
+        try:
+            from lxml import html as lxml_html
+            tree = lxml_html.fromstring(response.text.encode('utf-8'))
+            tables = pd.read_html(response.text, flavor='lxml')
+        except ImportError:
+            logger.debug("lxml 不可用，改使用 BeautifulSoup...")
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(response.text, 'html.parser')
+            table_elements = soup.find_all('table')
+            if not table_elements:
+                return format_f01_output(date, "failed", error="該日無交易資料（可能是假日或休市日）")
+            tables = [pd.read_html(str(table))[0] for table in table_elements]
+        except Exception as e:
+            logger.debug(f"解析失敗，嘗試備選方案: {e}")
+            try:
+                tables = pd.read_html(response.text)
+            except Exception:
+                return format_f01_output(date, "error", error=f"無法解析 HTML 表格: {str(e)}")
+
         if len(tables) == 0:
-            return {
-                "module": MODULE_ID,
-                "date": date,
-                "status": "failed",
-                "error": "該日無交易資料（可能是假日或休市日）"
-            }
+            return format_f01_output(date, "failed", error="該日無交易資料（可能是假日或休市日）")
         
         # 取得第一個表格（通常是主要資料表）
         df = tables[0]
@@ -307,51 +356,32 @@ def fetch(date: str) -> dict:
         # 根據表格類型處理
         if isinstance(df.columns, pd.MultiIndex):
             logger.debug("偵測到 MultiIndex 表頭")
-            return extract_foreign_data_multiindex(df, date)
+            result_dict = extract_foreign_data_multiindex(df, date)
         else:
             logger.debug("偵測到單層表頭")
-            return extract_foreign_data_single(df, date)
-    
+            result_dict = extract_foreign_data_single(df, date)
+
+        # 轉換為文字格式
+        if result_dict.get("status") == "success":
+            return format_f01_output(date, "success", data=result_dict.get("data"))
+        else:
+            return format_f01_output(date, "failed", error=result_dict.get("error", "未知錯誤"))
+
     except requests.Timeout:
-        return {
-            "module": MODULE_ID,
-            "date": date,
-            "status": "error",
-            "error": "連線逾時，請檢查網路連線"
-        }
-    
+        return format_f01_output(date, "error", error="連線逾時，請檢查網路連線")
+
     except requests.HTTPError as e:
-        return {
-            "module": MODULE_ID,
-            "date": date,
-            "status": "error",
-            "error": f"HTTP 錯誤 {e.response.status_code}"
-        }
-    
+        return format_f01_output(date, "error", error=f"HTTP 錯誤 {e.response.status_code}")
+
     except requests.RequestException as e:
-        return {
-            "module": MODULE_ID,
-            "date": date,
-            "status": "error",
-            "error": f"網路請求失敗: {str(e)}"
-        }
-    
+        return format_f01_output(date, "error", error=f"網路請求失敗: {str(e)}")
+
     except ValueError as e:
-        return {
-            "module": MODULE_ID,
-            "date": date,
-            "status": "error",
-            "error": f"HTML 解析失敗: {str(e)}"
-        }
-    
+        return format_f01_output(date, "error", error=f"HTML 解析失敗: {str(e)}")
+
     except Exception as e:
         logger.exception("未預期的錯誤")
-        return {
-            "module": MODULE_ID,
-            "date": date,
-            "status": "error",
-            "error": f"未預期的錯誤: {str(e)}"
-        }
+        return format_f01_output(date, "error", error=f"未預期的錯誤: {str(e)}")
 
 
 def main():
@@ -361,15 +391,16 @@ def main():
     else:
         # 預設測試日期
         test_date = '2025-11-28'
-    
+
     print(f"測試日期: {test_date}")
     print("-" * 60)
-    
+
     result = fetch(test_date)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-    
-    # 根據狀態設定退出碼
-    sys.exit(0 if result.get("status") == "success" else 1)
+    # 直接輸出文字（不再使用 json.dumps）
+    print(result)
+
+    # 判斷成功/失敗（檢查是否包含「錯誤:」）
+    sys.exit(0 if "錯誤:" not in result else 1)
 
 
 if __name__ == '__main__':
