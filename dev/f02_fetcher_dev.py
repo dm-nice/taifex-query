@@ -59,7 +59,8 @@ def format_f02_output(date: str, status: str, data: Optional[Dict] = None, error
     if status == "success" and data:
         long_pos = data.get("long_position", 0)
         source = data.get("source", "TAIFEX")
-        return f"F02: 台指期貨外資 [未平倉] [多方] : {long_pos:,} 口 [{source}]"
+        formatted_date = date.replace("-", ".")
+        return f"{formatted_date}  F02: 台指期貨外資 [未平倉] [多方] : {long_pos:,} 口 [TAIFEX]"
     else:
         error_msg = error or "未知錯誤"
         return f"F02 錯誤: {error_msg} [TAIFEX]"

@@ -40,16 +40,10 @@ https://www.taifex.com.tw/cht/3/futDailyMarketReport?queryDate=YYYY/MM/DD&market
 
 ### 回傳資料格式（統一文字格式 v5.0）
 
-**✅ 成功時**:
-```
-F04: 台指期貨當日收盤價 (Day N Close) : 23,450 [TAIFEX]
-```
-*(註: 若有小數點則保留，若為整數則加千分位逗號)*
-
-**❌ 失敗/錯誤時**:
-```
-F04 錯誤: 該日無交易資料 [TAIFEX]
-```
+- **格式**: `[YYYY.MM.DD]  F04: [描述] : [數值] [來源]`
+- **範例**:
+  - 成功: `2025.12.10  F04: 台指期貨當日收盤價 (Day N Close) : 28,289.0 [TAIFEX]`
+  - 失敗: `F04 錯誤: [錯誤訊息] [TAIFEX]`
 
 ---
 

@@ -62,7 +62,8 @@ def format_f04_output(date: str, status: str, data: Optional[Dict] = None, error
         else:
              price_str = str(price)
 
-        return f"F04: 台指期貨當日收盤價 (Day N Close) : {price_str} [TAIFEX]"
+        formatted_date = date.replace("-", ".")
+        return f"{formatted_date}  F04: 台指期貨當日收盤價 (Day N Close) : {price_str} [TAIFEX]"
     else:
         error_msg = error or "未知錯誤"
         return f"F04 錯誤: {error_msg} [TAIFEX]"

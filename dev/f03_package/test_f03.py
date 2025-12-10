@@ -118,10 +118,12 @@ def validate_output_format(output: str) -> Dict:
     }
 
     if output.startswith('F03:'):
+        expected_date_str = date.replace('-', '.')
         checks['format_valid'] = (
             '[未平倉]' in output and 
             '[空方]' in output and
-            '口' in output
+            '口' in output and
+            expected_date_str in output
         )
     elif '錯誤:' in output:
          checks['format_valid'] = 'F03 錯誤:' in output

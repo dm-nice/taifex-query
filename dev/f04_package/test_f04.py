@@ -55,7 +55,9 @@ def main():
         print(f"測試日期: {date} (預期成功)")
         output, code = run_test(date)
         print(f"輸出: {output}")
-        if "F04:" in output and "27,799" in output:
+        # 預期包含日期 (YYYY.MM.DD) 和正確數值
+        expected_date_str = date.replace('-', '.')
+        if "F04:" in output and "27,799" in output and expected_date_str in output:
             print("✅ PASS")
             passed += 1
         else:

@@ -109,7 +109,7 @@ def evaluate_test_result(actual_status: str, expected_status: str) -> str:
         return 'PASS' if actual_status in ['success', 'error'] else 'FAIL'
     return 'FAIL'
 
-def validate_output_format(output: str) -> Dict:
+def validate_output_format(output: str, date: str = "") -> dict:
     checks = {
         'is_string': isinstance(output, str),
         'has_module_id': output.startswith('F02:'),
@@ -117,11 +117,14 @@ def validate_output_format(output: str) -> Dict:
         'format_valid': False,
     }
 
+    expected_date_str = date.replace('-', '.') if date else ""
+
     if output.startswith('F02:'):
         checks['format_valid'] = (
             '[未平倉]' in output and 
             '[多方]' in output and
-            '口' in output
+            '口' in output and
+            expected_date_str in output
         )
     elif '錯誤:' in output:
          checks['format_valid'] = 'F02 錯誤:' in output
@@ -144,10 +147,11 @@ def main():
             all_results.append(result)
             
             icon = '✅' if result['test_result'] == 'PASS' else '❌'
-            print(f"  {icon} {date}: {result['actual_status']} (Expected: {result['expected_status']})")
+            print(f"  {icon} {date}: {result['actual_status']} (Expected: {category_config['expect']})")
             if result['actual_status'] == 'success':
                 print(f"     Output: {result['actual_output']}")
-                format_check = validate_output_format(result['actual_output'])
+                # 驗證輸出格式
+                format_check = validate_output_format(result['actual_output'], date)
                 if not format_check['all_passed']:
                     print(f"     ⚠️ Format Error: {format_check}")
 

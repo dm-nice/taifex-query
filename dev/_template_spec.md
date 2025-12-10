@@ -69,22 +69,22 @@
 
 ### 成功時
 ```
-[ YYYY.MM.DD  FXX[具體描述 + 數值]   source: [來源] ]
+[YYYY.MM.DD]  FXX: [描述] : [數值] [單位] [來源]
 ```
 
 **範例**：
 ```
-[ 2025.12.03  FXX外資多方口數 18,268，空方口數 47,300   source: [來源] ]
+2025.12.03  FXX: 台指期貨外資 [未平倉] [多方] : 18,268 口 [TAIFEX]
 ```
 
 ### 失敗時
 ```
-[ YYYY.MM.DD  FXX 錯誤: [錯誤訊息]   source: [來源] ]
+[YYYY.MM.DD]  FXX 錯誤: [錯誤訊息] [來源]
 ```
 
 **範例**：
 ```
-[ 2025.11.30  FXX 錯誤: 該日無交易資料（可能是假日或休市日）   source: [來源] ]
+2025.11.30  FXX 錯誤: 該日無交易資料（可能是假日或休市日） [TAIFEX]
 ```
 
 ---
@@ -130,10 +130,10 @@ def format_fxx_output(date: str, status: str, data: Optional[Dict] = None, error
         # 範例：
         value1 = data.get("key1", 0)
         value2 = data.get("key2", 0)
-        return f"[ {date_formatted}  {module_code}[描述] {value1:,} [單位]，{value2:,} [單位]   source: {SOURCE} ]"
+        return f"{date_formatted}  {module_code}: [描述] {value1:,} [單位]，{value2:,} [單位] [{SOURCE}]"
     else:
         error_msg = error or "未知錯誤"
-        return f"[ {date_formatted}  {module_code} 錯誤: {error_msg}   source: {SOURCE} ]"
+        return f"{date_formatted}  {module_code} 錯誤: {error_msg} [{SOURCE}]"
 
 
 def fetch(date: str) -> str:
@@ -254,7 +254,7 @@ type data\YYYY-MM-DD_fXX_fetcher_dev.txt
 - [ ] `fXX_fetcher_dev.py` 檔案（已存放在 `dev/` 目錄）
 - [ ] 獨立測試通過（執行 `python fXX_fetcher_dev.py` 無錯誤）
 - [ ] 整合測試通過（執行 `python run.py ... dev` 產生正確輸出）
-- [ ] 輸出格式符合規範（使用 [ YYYY.MM.DD FXX... ] 格式）
+- [ ] 輸出格式符合規範（使用 `[YYYY.MM.DD]  FXX...` 格式）
 - [ ] 所有測試案例都通過
 - [ ] 錯誤處理完整（不會拋出未處理的例外）
 - [ ] 簡短說明文件（說明您使用的抓取方式與遇到的挑戰）

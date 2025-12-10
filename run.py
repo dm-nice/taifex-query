@@ -189,8 +189,10 @@ def validate_text_format(result: Any, module_name: str, query_date: str) -> Tupl
             if date_formatted in result and module_id in result:
                 status = "failed" if "錯誤:" in result else "success"
                 return result, status
-        elif result.startswith(module_id + ":"):
-            # 新格式驗證（以模組ID開頭）
+        elif result.startswith(module_id + ":") or (
+            date_formatted in result and (f"{module_id}:" in result or f"{module_id} 錯誤:" in result)
+        ):
+            # 新格式驗證（包含帶日期的格式）
             status = "failed" if "錯誤:" in result else "success"
             return result, status
 
