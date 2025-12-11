@@ -24,8 +24,9 @@ from datetime import datetime
 
 # 設定 UTF-8 輸出（解決 Windows 終端亂碼）
 if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+    if not getattr(sys, "frozen", False):
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 # 模組識別
 MODULE_ID = "f02"

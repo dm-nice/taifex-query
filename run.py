@@ -34,7 +34,17 @@ from functools import lru_cache
 
 # ===== 設定 =====
 # 自動取得專案根目錄
-PROJECT_ROOT = Path(__file__).parent.absolute()
+if getattr(sys, "frozen", False):
+    base_dir = Path(sys.executable).resolve().parent
+else:
+    base_dir = Path(__file__).resolve().parent
+
+if (base_dir / "modules").exists():
+    PROJECT_ROOT = base_dir
+elif (base_dir.parent / "modules").exists():
+    PROJECT_ROOT = base_dir.parent
+else:
+    PROJECT_ROOT = base_dir
 BASE_DIR = PROJECT_ROOT / "data"
 LOG_FORMAT = "%(asctime)s [%(levelname)s] %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"

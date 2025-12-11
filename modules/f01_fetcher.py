@@ -26,8 +26,8 @@ import pandas as pd
 from typing import Dict, Optional
 from datetime import datetime
 
-# 設定 UTF-8 輸出（解決 Windows 終端亂碼）
-if sys.platform == 'win32':
+# 設定 UTF-8 輸出（解決 Windows 終端亂碼，PyInstaller 已處理打包的情境）
+if sys.platform == 'win32' and not getattr(sys, "frozen", False):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
@@ -195,7 +195,6 @@ def extract_foreign_data_multiindex(df: pd.DataFrame, date: str) -> Dict:
             },
             "source": "TAIFEX"
         }
-        
     except (IndexError, KeyError) as e:
         return {
             "module": MODULE_ID,
