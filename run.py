@@ -66,27 +66,22 @@ def setup_logger(log_file: Path) -> logging.Logger:
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     logger.handlers.clear()
-    
+
     # 檔案 handler - 詳細記錄（UTF-8 編碼）
     file_handler = logging.FileHandler(log_file, encoding='utf-8', mode='a')
     file_handler.setLevel(logging.DEBUG)
     file_formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
     file_handler.setFormatter(file_formatter)
-    
+
     # 終端機 handler - 簡潔輸出（使用 UTF-8 編碼以支援中文和表情符號）
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.INFO)
     console_formatter = logging.Formatter('%(message)s')
     console_handler.setFormatter(console_formatter)
-    
-    # 設定終端機編碼為 UTF-8（Windows 相容）
-    if sys.stdout.encoding != 'utf-8':
-        import io
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    
+
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
-    
+
     return logger
 
 
@@ -493,11 +488,12 @@ def print_usage():
 
 def main():
     """主程式進入點"""
-    # 設定 UTF-8 編碼以支援中文和表情符號
-    if sys.stdout.encoding != 'utf-8':
+    # 設定 UTF-8 編碼以支援中文和表情符號（只在需要時設定一次）
+    if sys.stdout.encoding != 'utf-8' and not hasattr(sys.stdout, '_wrapped_for_utf8'):
         import io
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    
+        sys.stdout._wrapped_for_utf8 = True  # 標記已包裝，避免重複
+
     args = sys.argv[1:]
     
     # 顯示說明

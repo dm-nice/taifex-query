@@ -1,9 +1,9 @@
 # run.py 開發規格書
 
-**程式名稱**: run.py  
-**功能**: 模組統一執行程式  
-**版本**: 2.0（混合模式）  
-**最後更新**: 2025-12-04
+**程式名稱**: run.py
+**功能**: 模組統一執行程式
+**版本**: 2.1（UTF-8 包裝修復）
+**最後更新**: 2025-12-15
 
 ---
 
@@ -484,6 +484,86 @@ for idx, module_name in enumerate(modules, 1):
 
 ## 錯誤處理
 
+### ⚠️ UTF-8 包裝重複問題（2025-12-15 修復）
+
+**問題描述：**
+在 Windows 環境下，當 `sys.stdout` 被**重複包裝**時會導致 `ValueError: I/O operation on closed file` 錯誤。
+
+**發生原因：**
+```
+python run.py 2025-12-15
+    ↓
+run.py main() 第一次包裝 sys.stdout
+    ↓
+載入 modules.f01_fetcher
+    ↓
+f01_fetcher.py 第二次包裝 sys.stdout  ← 💥 問題！
+    ↓
+第一次的 stdout 文件流被關閉
+    ↓
+logger 無法寫入 → ValueError
+```
+
+**技術細節：**
+```python
+# 第一次包裝（run.py）
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')  # 創建對象 A
+
+# 第二次包裝（模組載入時）
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')  # 創建對象 B
+# 問題：對象 B 使用對象 A 的 .buffer，導致對象 A 被關閉
+# 結果：logger 還在使用對象 A，但對象 A 已關閉 → I/O 錯誤
+```
+
+**解決方案：**
+
+在所有包裝 `sys.stdout` 的地方加入檢查機制：
+
+```python
+# ❌ 錯誤寫法（會重複包裝）
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+# ✅ 正確寫法（避免重複包裝）
+if sys.stdout.encoding != 'utf-8' and not hasattr(sys.stdout, '_wrapped_for_utf8'):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stdout._wrapped_for_utf8 = True  # 標記已包裝
+```
+
+**修復位置：**
+- ✅ [run.py:497-500](run.py#L497-L500) - main() 函式
+- ✅ [modules/f01_fetcher.py:32-37](modules/f01_fetcher.py#L32-L37) - 模組初始化
+- ✅ [modules/f02_fetcher.py:29-34](modules/f02_fetcher.py#L29-L34) - 模組初始化
+- ✅ 所有 dev/ 目錄下的模組（38 個檔案已驗證）
+
+**症狀表現：**
+```bash
+# 執行時會出現大量這樣的錯誤
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Python39-32bit\lib\logging\__init__.py", line 1082, in emit
+    stream.write(msg + self.terminator)
+ValueError: I/O operation on closed file.
+```
+
+**影響範圍：**
+| 功能 | 狀態 | 說明 |
+|------|------|------|
+| 模組執行 | ✅ 正常 | fetch() 函式本身沒問題 |
+| 資料寫入 | ✅ 正常 | 直接寫檔案，不受影響 |
+| 日誌輸出 | ❌ 失敗 | logger 使用被關閉的 stdout |
+| 統計報告 | ❌ 失敗 | logger.info() 全部失敗 |
+
+**預防措施：**
+1. 所有新模組都應使用標記檢查機制
+2. 不要直接包裝 `sys.stdout`，先檢查是否已包裝
+3. 使用 `_wrapped_for_utf8` 標記追蹤包裝狀態
+
+**相關工具：**
+- [fix_utf8_wrapper.py](fix_utf8_wrapper.py) - 批次檢查和修復工具
+
+---
+
 ### 模組載入錯誤
 
 ```python
@@ -692,6 +772,14 @@ logger.addHandler(console_handler)
 ---
 
 ## 版本歷史
+
+### v2.1（UTF-8 包裝修復）- 2025-12-15
+- 🐛 **重要修復**：解決 Windows 環境下 sys.stdout 重複包裝導致的 I/O 錯誤
+- ✅ 加入 `_wrapped_for_utf8` 標記機制防止重複包裝
+- ✅ 修復 logger 無法寫入的問題
+- ✅ 修復統計報告無法顯示的問題
+- 📝 更新錯誤處理文檔，記錄 UTF-8 包裝問題
+- 🛠️ 建立 [fix_utf8_wrapper.py](fix_utf8_wrapper.py) 批次修復工具
 
 ### v2.0（混合模式）- 2025-12-04
 - ✨ 採用混合模式設計（英文 key + 中文顯示）

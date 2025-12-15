@@ -27,9 +27,14 @@ from typing import Dict, Optional
 from datetime import datetime
 
 # 設定 UTF-8 輸出（解決 Windows 終端亂碼，PyInstaller 已處理打包的情境）
+# 只在尚未包裝時才進行包裝，避免重複包裝導致 I/O 錯誤
 if sys.platform == 'win32' and not getattr(sys, "frozen", False):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+    if not hasattr(sys.stdout, '_wrapped_for_utf8'):
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+        sys.stdout._wrapped_for_utf8 = True
+    if not hasattr(sys.stderr, '_wrapped_for_utf8'):
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+        sys.stderr._wrapped_for_utf8 = True
 
 # 模組識別
 MODULE_ID = "f01"
@@ -44,20 +49,30 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def format_f01_output(date: str, status: str, data: Optional[Dict] = None, error: Optional[str] = None) -> str:
+def format_f01_output(
+    date: str,
+    status: str,
+    data: Optional[Dict] = None,
+    error: Optional[str] = None,
+    timestamp: Optional[str] = None,
+    context: Optional[Dict] = None
+) -> str:
     """
-    格式化 F01 輸出為統一文字格式 v5.0
+    格式化 F01 輸出為統一文字格式 v5.0（增強錯誤信息版本）
 
     Args:
         date: 日期 (YYYY-MM-DD) - 僅用於錯誤訊息（成功時不顯示日期）
         status: 狀態 ("success" / "failed" / "error")
         data: 成功時的資料字典
         error: 失敗時的錯誤訊息
+        timestamp: [NEW] 錯誤發生時間 (YYYY-MM-DD HH:MM:SS)
+        context: [NEW] 錯誤上下文字典 (如 {"timeout": 30, "status_code": 404})
 
     Returns:
         統一格式文字字串 v5.0
         成功時: F01: 台指期貨外資 [未平倉] [多空淨額] : -26,823 口 [TAIFEX]
         失敗時: F01 錯誤: {錯誤訊息} [TAIFEX]
+        增強版: F01 錯誤: {訊息} [TAIFEX] (2025-12-15 14:30:45, timeout=30s)
     """
     if status == "success" and data:
         net = data.get("net_position", 0)
@@ -68,7 +83,44 @@ def format_f01_output(date: str, status: str, data: Optional[Dict] = None, error
     else:
         error_msg = error or "未知錯誤"
         # v5.0 錯誤格式：移除日期和中括號，統一簡潔風格
-        return f"F01 錯誤: {error_msg} [TAIFEX]"
+        result = f"F01 錯誤: {error_msg} [TAIFEX]"
+        
+        # [NEW] 增加時間戳和上下文後綴
+        suffix = ""
+        if timestamp:
+            suffix += f" ({timestamp}"
+            
+        if context:
+            context_parts = []
+            for k, v in context.items():
+                if k == "timeout":
+                    context_parts.append(f"{k}={v}s")
+                else:
+                    context_parts.append(f"{k}={v}")
+            context_str = ", ".join(context_parts)
+            
+            if suffix:
+                suffix += f", {context_str})"
+            else:
+                suffix = f" ({context_str})"
+        elif suffix:
+            suffix += ")"
+        
+        result += suffix
+        
+        # [NEW] 記錄到日誌
+        if status == "error":
+            logger.error(
+                f"F01 fetcher error",
+                extra={"error": error, "date": date, "timestamp": timestamp, "context": context}
+            )
+        elif status == "failed":
+            logger.warning(
+                f"F01 fetcher failed",
+                extra={"error": error, "date": date}
+            )
+        
+        return result
 
 
 def convert_to_int(value) -> int:
@@ -368,20 +420,54 @@ def fetch(date: str) -> str:
             return format_f01_output(date, "failed", error=result_dict.get("error", "未知錯誤"))
 
     except requests.Timeout:
-        return format_f01_output(date, "error", error="連線逾時，請檢查網路連線")
+        # [MODIFIED] 增加時間戳和上下文
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        context = {"timeout": 30}
+        return format_f01_output(
+            date, "error",
+            error="連線逾時，請檢查網路連線",
+            timestamp=timestamp,
+            context=context
+        )
 
     except requests.HTTPError as e:
-        return format_f01_output(date, "error", error=f"HTTP 錯誤 {e.response.status_code}")
+        # [MODIFIED] 增加時間戳和上下文
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        context = {"status_code": e.response.status_code}
+        return format_f01_output(
+            date, "error",
+            error=f"HTTP 錯誤 {e.response.status_code}",
+            timestamp=timestamp,
+            context=context
+        )
 
     except requests.RequestException as e:
-        return format_f01_output(date, "error", error=f"網路請求失敗: {str(e)}")
+        # [MODIFIED] 增加時間戳
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return format_f01_output(
+            date, "error",
+            error=f"網路請求失敗: {str(e)}",
+            timestamp=timestamp
+        )
 
     except ValueError as e:
-        return format_f01_output(date, "error", error=f"HTML 解析失敗: {str(e)}")
+        # [MODIFIED] 增加時間戳
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return format_f01_output(
+            date, "error",
+            error=f"HTML 解析失敗: {str(e)}",
+            timestamp=timestamp
+        )
 
     except Exception as e:
+        # [MODIFIED] 增加時間戳
         logger.exception("未預期的錯誤")
-        return format_f01_output(date, "error", error=f"未預期的錯誤: {str(e)}")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return format_f01_output(
+            date, "error",
+            error=f"未預期的錯誤: {str(e)}",
+            timestamp=timestamp
+        )
 
 
 def main():

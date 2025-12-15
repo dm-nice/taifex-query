@@ -23,10 +23,15 @@ from typing import Dict, Optional
 from datetime import datetime
 
 # 設定 UTF-8 輸出（解決 Windows 終端亂碼）
+# 只在尚未包裝時才進行包裝，避免重複包裝導致 I/O 錯誤
 if sys.platform == 'win32':
     if not getattr(sys, "frozen", False):
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+        if not hasattr(sys.stdout, '_wrapped_for_utf8'):
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+            sys.stdout._wrapped_for_utf8 = True
+        if not hasattr(sys.stderr, '_wrapped_for_utf8'):
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+            sys.stderr._wrapped_for_utf8 = True
 
 # 模組識別
 MODULE_ID = "f02"
