@@ -935,8 +935,8 @@ def main():
     if len(sys.argv) > 1:
         test_date = sys.argv[1]
     else:
-        # 預設測試日期（使用當前日期）
-        test_date = datetime.now().strftime("%Y-%m-%d")
+        # 預設測試日期
+        test_date = '2025-11-28'
 
     print(f"測試日期: {test_date}")
     print("-" * 60)
