@@ -21,16 +21,13 @@
 ===========================================================
 """
 
-import os
 import sys
-import json
 import logging
 import importlib
+import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple, Any
-import traceback
-from functools import lru_cache
 
 # ===== 設定 =====
 # 自動取得專案根目錄
@@ -61,11 +58,59 @@ STATUS_ICONS = {
 }
 
 
+class SafeConsoleHandler(logging.Handler):
+    """安全的 Console Handler - 避免因 stdout 被關閉而出錯"""
+
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+
+            # 跳過包含時間戳記的訊息（格式：YYYY-MM-DD HH:MM:SS [INFO]）
+            if '[INFO]' in msg or '[ERROR]' in msg or '[WARNING]' in msg or '[DEBUG]' in msg:
+                return
+
+            # 只在螢幕顯示重要的摘要資訊
+            # 允許顯示的模式：開頭標題區塊 + 最後統計區塊
+            show_patterns = [
+                '═════',              # 標題分隔線
+                '📅 查詢日期:',       # 查詢日期
+                '⏰ 執行時間:',       # 執行時間
+                '🔧 執行模式:',       # 執行模式
+                '🎯 指定模組:',       # 指定模組
+                # '📦 找到',          # 找到模組數量（移除，不顯示）
+                '📊 執行統計',        # 執行統計標題
+                '總數:',              # 統計資訊
+                '✅ 成功:',           # 成功數量
+                '⚠️  失敗:',         # 失敗數量（注意兩個空格）
+                '❌ 錯誤:',           # 錯誤數量
+                '⛔ 無效:',           # 無效數量
+                '📝 詳細日誌:',       # 日誌位置
+                '⚠️  在'              # 警告訊息（找不到模組）
+            ]
+
+            # 檢查是否需要顯示
+            if any(pattern in msg for pattern in show_patterns):
+                print(msg)
+            # 只在標題區塊顯示空行
+            elif msg.strip() == '' and '═' in getattr(self, '_last_msg', ''):
+                print(msg)
+
+            # 記錄最後一條訊息（用於判斷空行）
+            self._last_msg = msg
+
+        except Exception:
+            # 靜默處理錯誤，避免中斷執行
+            pass
+
+
 def setup_logger(log_file: Path) -> logging.Logger:
     """設定日誌記錄器"""
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     logger.handlers.clear()
+
+    # 禁用向上傳播，避免日誌被 root logger 的 handler 重複輸出
+    logger.propagate = False
 
     # 檔案 handler - 詳細記錄（UTF-8 編碼）
     file_handler = logging.FileHandler(log_file, encoding='utf-8', mode='a')
@@ -73,8 +118,8 @@ def setup_logger(log_file: Path) -> logging.Logger:
     file_formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
     file_handler.setFormatter(file_formatter)
 
-    # 終端機 handler - 簡潔輸出（使用 UTF-8 編碼以支援中文和表情符號）
-    console_handler = logging.StreamHandler(sys.stdout)
+    # 終端機 handler - 使用安全的 Console Handler
+    console_handler = SafeConsoleHandler()
     console_handler.setLevel(logging.INFO)
     console_formatter = logging.Formatter('%(message)s')
     console_handler.setFormatter(console_formatter)
@@ -88,11 +133,11 @@ def setup_logger(log_file: Path) -> logging.Logger:
 def get_module_list(folder: str, only_module: Optional[str] = None) -> List[str]:
     """
     取得模組列表
-    
+
     Args:
         folder: 模組資料夾 ('dev' 或 'modules')
         only_module: 僅執行特定模組
-        
+
     Returns:
         排序後的模組名稱列表
     """
@@ -100,19 +145,20 @@ def get_module_list(folder: str, only_module: Optional[str] = None) -> List[str]
         folder_path = PROJECT_ROOT / folder
         if not folder_path.exists():
             return []
-        
+
+        # 取得所有 Python 模組（排除 __init__.py 等）
         files = [
-            f for f in os.listdir(folder_path) 
-            if f.endswith(".py") and not f.startswith("_")
+            f.stem for f in folder_path.glob("*.py")
+            if not f.name.startswith("_")
         ]
-        
-        modules = [f"{folder}.{f[:-3]}" for f in files]
-        
+
+        modules = [f"{folder}.{f}" for f in files]
+
         if only_module:
             modules = [m for m in modules if m.endswith(only_module)]
-        
+
         return sorted(modules)
-        
+
     except Exception as e:
         print(f"⚠️  讀取模組列表失敗: {e}")
         return []
@@ -128,10 +174,14 @@ def extract_module_id(module_name: str) -> str:
     Returns:
         例如 "F01", "F02"
     """
-    import re
-    match = re.match(r'([a-z]\d+)', module_name, re.IGNORECASE)
-    if match:
-        return match.group(1).upper()
+    # 提取模組代號（字母+數字組合）
+    for i, char in enumerate(module_name):
+        if char.isdigit():
+            # 找到數字後繼續找到非數字為止
+            j = i + 1
+            while j < len(module_name) and module_name[j].isdigit():
+                j += 1
+            return module_name[:j].upper()
     return module_name.upper()[:3]
 
 
@@ -219,50 +269,6 @@ def validate_text_format(result: Any, module_name: str, query_date: str) -> Tupl
         return text, "invalid"
 
 
-def validate_result_format(result: Dict, module_name: str, query_date: str) -> Tuple[Dict, str]:
-    """
-    驗證並正規化模組返回結果（舊版，保留用於向後兼容）
-
-    Args:
-        result: 模組返回的結果
-        module_name: 模組名稱
-        query_date: 查詢日期
-
-    Returns:
-        (正規化後的結果, 狀態碼)
-    """
-    module_short = module_name.split(".")[-1]
-    
-    # 檢查是否為字典
-    if not isinstance(result, dict):
-        return {
-            "module": module_short,
-            "date": query_date,
-            "status": "invalid",
-            "error": "返回格式錯誤：應為 dict 類型"
-        }, "invalid"
-    
-    # 檢查必要欄位
-    if "status" not in result:
-        return {
-            "module": module_short,
-            "date": query_date,
-            "status": "invalid",
-            "error": "返回結果缺少 'status' 欄位"
-        }, "invalid"
-    
-    # 取得狀態
-    status = result.get("status", "unknown")
-    
-    # 補充缺少的欄位
-    if "module" not in result:
-        result["module"] = module_short
-    if "date" not in result:
-        result["date"] = query_date
-    
-    return result, status
-
-
 def save_result(result: str, module_name: str, exec_day: str, dev_mode: bool) -> Path:
     """
     儲存執行結果到檔案（統一文字格式）
@@ -278,22 +284,11 @@ def save_result(result: str, module_name: str, exec_day: str, dev_mode: bool) ->
     """
     suffix = "_dev" if dev_mode else ""
     module_short = module_name.split(".")[-1]
-
-    # 取得當前時間戳記（台北時間）
-    from datetime import datetime
-    import os
-    
-    # 檢查是否有 TZ 環境變數設定
-    tz_info = os.environ.get('TZ', 'UTC')
     current_time = datetime.now().strftime("%H%M")
-    
-    # 檔案名稱格式: YYYY-MM-DD_HHMM_模組名稱.txt
-    # 例如: 2025-12-08_2100_f01_fetcher.txt
-    data_file = BASE_DIR / f"{exec_day}_{current_time}_{module_short}{suffix}.txt"
 
-    # 直接寫入文字
-    with open(data_file, "w", encoding="utf-8") as f:
-        f.write(result)
+    # 檔案名稱格式: YYYY-MM-DD_HHMM_模組名稱.txt
+    data_file = BASE_DIR / f"{exec_day}_{current_time}_{module_short}{suffix}.txt"
+    data_file.write_text(result, encoding="utf-8")
 
     return data_file
 
@@ -328,8 +323,23 @@ def execute_module(module_name: str, query_date: str, logger: logging.Logger) ->
             error_text = f"[ {date_formatted}  {module_id} 錯誤: 模組缺少 fetch() 函式   source: UNKNOWN ]"
             return error_text, "error"
 
-        # 執行 fetch 函式
-        result = mod.fetch(query_date)
+        # 暫時禁用 root logger 的 console 輸出，避免模組內部 log 顯示在螢幕上
+        root_logger = logging.getLogger()
+        original_handlers = root_logger.handlers[:]
+
+        # 移除所有 console handlers
+        for handler in original_handlers:
+            if isinstance(handler, (logging.StreamHandler, SafeConsoleHandler)):
+                root_logger.removeHandler(handler)
+
+        try:
+            # 執行 fetch 函式
+            result = mod.fetch(query_date)
+        finally:
+            # 恢復 root logger 的 handlers
+            for handler in original_handlers:
+                if handler not in root_logger.handlers:
+                    root_logger.addHandler(handler)
 
         # 驗證並正規化
         validated_text, status = validate_text_format(result, module_name, query_date)
@@ -486,44 +496,58 @@ def print_usage():
     print(__doc__)
 
 
-def main():
-    """主程式進入點"""
-    # 設定 UTF-8 編碼以支援中文和表情符號（只在需要時設定一次）
-    if sys.stdout.encoding != 'utf-8' and not hasattr(sys.stdout, '_wrapped_for_utf8'):
-        import io
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-        sys.stdout._wrapped_for_utf8 = True  # 標記已包裝，避免重複
+def parse_arguments() -> Tuple[str, bool, Optional[str]]:
+    """
+    解析命令列參數
 
+    Returns:
+        (查詢日期, 驗收模式, 指定模組)
+    """
     args = sys.argv[1:]
-    
+
     # 顯示說明
     if "--help" in args or "-h" in args:
         print_usage()
         sys.exit(0)
-    
-    # 解析參數
-    query_date = args[0] if len(args) > 0 else datetime.now().strftime("%Y-%m-%d")
-    dev_mode = len(args) > 1 and args[1].lower() == "dev"
+
+    # 解析日期
+    query_date = args[0] if args and not args[0].startswith("-") else datetime.now().strftime("%Y-%m-%d")
+
+    # 解析模式
+    dev_mode = "dev" in args
+
+    # 解析指定模組
     only_module = None
-    
     if "--module" in args:
         idx = args.index("--module")
         if idx + 1 < len(args):
             only_module = args[idx + 1]
         else:
-            print("❌ 錯誤: --module 參數後需要指定模組名稱")
-            print()
+            print("❌ 錯誤: --module 參數後需要指定模組名稱\n")
             print_usage()
             sys.exit(1)
-    
-    # 驗證日期
+
+    # 驗證日期格式
     if not validate_date(query_date):
         print(f"❌ 錯誤: 日期格式不正確 '{query_date}'")
-        print("   請使用 YYYY-MM-DD 格式，例如: 2025-12-01")
-        print()
+        print("   請使用 YYYY-MM-DD 格式，例如: 2025-12-01\n")
         print_usage()
         sys.exit(1)
-    
+
+    return query_date, dev_mode, only_module
+
+
+def main():
+    """主程式進入點"""
+    # 設定 UTF-8 編碼以支援中文和表情符號
+    if sys.stdout.encoding != 'utf-8' and not hasattr(sys.stdout, '_wrapped_for_utf8'):
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stdout._wrapped_for_utf8 = True
+
+    # 解析參數
+    query_date, dev_mode, only_module = parse_arguments()
+
     # 執行
     try:
         run(query_date, dev_mode, only_module)

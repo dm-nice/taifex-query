@@ -312,8 +312,7 @@ dev/README.md
 ```
 我要開發 F02 模組，請參考：
 1. dev/README.md - 開發流程
-2. modules/f01_fetcher.py - 程式碼範例
-3. dev/f01_package/f01_fetcher_開發規範書.md - 規格書範例
+2. dev/f01_package/f01_fetcher_開發規範書.md - 規格書範例
 ```
 
 ### 3. 完成工作後

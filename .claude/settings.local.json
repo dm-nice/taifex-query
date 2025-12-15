@@ -3,7 +3,15 @@
     "allow": [
       "Bash(powershell \"Get-ChildItem -Path ([Environment]::GetFolderPath(''ApplicationData'') + ''\\Code\\User\\globalStorage'') -Directory | Where-Object {$_Name -like ''*anthropic*'' -or $_Name -like ''*claude*''} | Select-Object -ExpandProperty FullName\")",
       "Bash(ls:*)",
-      "Bash(dir /B *.md)"
+      "Bash(dir /B *.md)",
+      "Bash(python run.py:*)",
+      "Bash(dir /B 2025-12-15_20*.txt)",
+      "Bash(cmd /c run.bat 2025-12-15)",
+      "Bash(./run.bat:*)",
+      "Bash(python:*)",
+      "Bash(cat:*)",
+      "Bash(dir /B \"C:\\Taifex\\data\\2025-12-15_*_f15_fetcher.txt\")",
+      "Bash(timeout 30 python:*)"
     ],
     "deny": [],
     "ask": []
