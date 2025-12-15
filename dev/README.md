@@ -31,6 +31,16 @@ dev/
 │
 ├── f03_package/ ... f07_package/      # F03 ~ F07 模組開發包
 │
+├── f06_package/                       # F06 模組開發包（波動率指數）⭐ 升級完成
+│   ├── f06_v11_openspec_dev.py       # F06 v1.1 版本（Selenium - 開發版）
+│   ├── test_f06_v11_openspec.py      # F06 v1.1 測試套件（19 個 Mock 測試）
+│   ├── design.md                      # F06 設計文檔
+│   ├── UPGRADE_LOG.md                 # v1.0 → v1.1 升級日誌
+│   ├── DEPLOYMENT_REPORT_V11.md       # v1.1 部署報告
+│   ├── explore_mis_structure.py       # MIS 頁面結構調查
+│   ├── debug_pandas_columns.py        # pandas 欄位除錯
+│   └── README.md                      # F06 模組說明
+│
 ├── f11_package/                       # F11 模組開發包
 │
 ├── f13_package/ ... f17_package/      # F13 ~ F17 模組開發包
@@ -80,11 +90,13 @@ copy fXX_package/fxx_fetcher_dev.py ../modules/fxx_fetcher.py
 ### 3️⃣ 對於 F01 模組維護者
 
 **最新版本（v7.0）位置：**
+
 - 生產版本：`../modules/f01_fetcher.py` ✅ 已部署
 - 開發版本：`f01_package/f01_openspec_dev.py` (用於參考和測試)
 - 完整測試：`f01_package/test_f01_openspec.py` (41 個測試)
 
 **升級歷史：**
+
 - v6.0 → v7.0: 添加完整文檔、TypedDict 定義、統一日誌系統
 
 ---
@@ -94,21 +106,25 @@ copy fXX_package/fxx_fetcher_dev.py ../modules/fxx_fetcher.py
 F01 模組是使用 **OpenSpec 4 相位框架** 實現的完整範例：
 
 ### Phase 1: 文檔化 ✅
+
 - **模組級文檔**：7 個部分（功能、入口、限制、依賴、版本、錯誤表、日誌）
 - **函數文檔**：4,500+ 字的詳細 docstring
 - **inline 註解**：4 個關鍵邏輯點的業務說明
 
 **相關文件：**
+
 - `f01_package/design.md` - 設計理由和架構
 - `f01_package/tasks.md` - 16 個任務的完整清單
 
 ### Phase 2: 代碼改進 ✅
+
 - **TypedDict 定義**：3 個類型 (ForeignDataDict, ErrorContextDict, FetchResultDict)
 - **統一日誌**：[F01] 前綴 + 日期 + 時間戳上下文
 - **異常處理**：5 種異常類型統一處理
 - **PEP 8 遵循**：100% 合規
 
 **改進項目：**
+
 ```python
 # 類型定義 (phase 2)
 class ForeignDataDict(TypedDict):
@@ -122,6 +138,7 @@ logger.info(f"[F01] {date} 開始抓取資料")
 ```
 
 ### Phase 3: 測試 ✅
+
 - **41 個測試全部通過** (100% 成功率)
   - 18 個單元測試 (convert_to_int, find_column, format_output)
   - 8 個異常測試 (timeout, HTTP error, network etc.)
@@ -130,23 +147,201 @@ logger.info(f"[F01] {date} 開始抓取資料")
   - 6 個部署驗證測試
 
 **測試運行：**
+
 ```bash
 cd f01_package
 python -m pytest test_f01_openspec.py -v
 ```
 
 ### Phase 4: 部署 ✅
+
 - **生產部署完成** (2025-12-15 13:45:09)
 - **備份保留** (v6.0 保留以便回滾)
 - **向後相容** (100% 驗證)
 - **驗證測試** (6/6 通過)
 
 **部署狀態：**
+
 ```
 Location: ../modules/f01_fetcher.py
 Version: v7.0
 Status: ACTIVE (正式環境)
 Backup: ../modules/f01_fetcher.py.backup.v6.0
+```
+
+---
+
+## 🎯 OpenSpec 實現框架（F06 範例 - 升級完成）
+
+F06 模組完成了 **OpenSpec 4 相位框架** 的首次升級：
+
+**模組名稱：** 臺指選擇權波動率指數 (Taiwan Index Options Volatility Index)  
+**版本歷程：** v1.0 (靜態, NaN) → **v1.1 (Selenium, 21.46)** ✅  
+**當前數據源：** MIS VolatilityQuotes (<https://mis.taifex.com.tw/futures/VolatilityQuotes/>)  
+**輸出格式：** `2025.12.15  F06: 臺指選擇權波動率指數 : 21.46 [TAIFEX]`
+
+### 升級成果 (2025-12-15 22:20)
+
+| 指標 | v1.0 | v1.1 | 改進 |
+|------|------|------|------|
+| **資料品質** | NaN (無數據) | 21.46 (實時) | ✅ 解決 |
+| **抓取方式** | HTTP + 靜態 | Selenium + 動態 | ✅ 增強 |
+| **測試覆蓋** | 34 個測試 | 19 個 Mock 測試 | ✅ 重構 |
+| **部署狀態** | 有數據問題 | ✅ 生產運作 | ✅ 上線 |
+| **性能** | <2 秒 | ~20 秒 | ⚠️ 但換取正確性 |
+
+### Phase 1: 文檔化 ✅
+
+- **設計規格**：design.md (241 行) + UPGRADE_LOG.md
+  - 完整的模組目標、兩個數據源對比、輸出格式規範
+  - 異常處理策略（5 種異常類型）
+  - 升級路線圖 (v1.1 新增)
+
+### Phase 2: 代碼實現 ✅
+
+- **f06_v11_openspec_dev.py**：500 行生產就緒代碼
+  - **Selenium 自動化**：Chrome WebDriver 管理
+  - **免責聲明自動點擊**：解決 TAIFEX MIS 訪問限制
+  - **動態 HTML 解析**：支援 JavaScript 渲染內容
+  - **表格多欄位支援**：7 種欄位名稱變異
+  - **完整異常處理**：5+ 種異常類型
+
+**代碼亮點：**
+
+```python
+# 免責聲明自動處理
+disclaimer_button = WebDriverWait(driver, 5).until(
+    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), '接受')]"))
+)
+disclaimer_button.click()
+
+# 多欄位支援
+possible_names = [
+    '目前指數',  # MIS 主欄位 ⭐
+    '臺指選擇權波動率指數',
+    '波動率指數',
+    'VIX指數', 'VIX', '波動率', 'Volatility Index', 'VIX Close'
+]
+
+# pandas 表格解析
+tables = pd.read_html(page_html)
+for df in tables:
+    for name in possible_names:
+        if name in df.columns:
+            value = float(df[name].iloc[0])
+            return {"status": "success", "data": {"vix_value": value}}
+```
+
+### Phase 3: 測試 ✅
+
+**v1.1 測試套件** (test_f06_v11_openspec.py)
+
+- **19 個 Mock 測試全部通過** (100% 成功率)
+  - TestFormatOutput: 5 個測試
+  - TestExtractVIXValue: 4 個測試  
+  - TestSeleniumIntegration: 3 個 Mock Selenium 測試
+  - TestEdgeCases: 3 個邊界情況測試
+  - TestOutputFormat: 2 個格式驗證測試
+  - TestDateValidation: 2 個日期驗證測試
+
+**測試運行：**
+
+```bash
+cd f06_package
+python -m pytest test_f06_v11_openspec.py -v
+# 結果: 19 passed in 94.86s ✅
+```
+
+### Phase 4: 部署 ✅
+
+**部署時間線：**
+
+```
+22:15 | 問題識別 (v1.0 返回 NaN)
+22:16 | 升級決策 (選擇 Selenium 方案)
+22:18 | v1.1 代碼完成 + 測試完成
+22:19 | 核心問題解決 (欄位名稱調整)
+22:20 | 生產部署 (複製至 modules/f06_fetcher.py)
+22:22 | 生產驗證通過 (實時 VIX: 21.46)
+```
+
+**部署狀態：**
+
+```
+Location: ../modules/f06_fetcher.py
+Version: v1.1 (Selenium)
+Status: ✅ ACTIVE (生產環境運行中)
+Backup: ../modules/f06_fetcher.py.backup.v1.0
+Tests: 19/19 通過 (100%)
+```
+
+**升級詳情參考：**
+
+- 🔄 升級日誌: `f06_package/UPGRADE_LOG.md`
+- 📊 部署報告: `f06_package/DEPLOYMENT_REPORT_V11.md`
+- 🧪 測試套件: `f06_package/test_f06_v11_openspec.py`
+  - **HTML 表格解析**：支援 MultiIndex 和單層表頭
+  - **統一日誌**：[F06] 前綴 + 日期 + 時間戳
+
+**關鍵特性：**
+
+```python
+# 提取 VIX 數據
+def extract_vix_value(df, date) -> dict:
+    # 嘗試 7 種可能的欄位名稱
+    # 支援 MultiIndex 複雜表頭
+    # 返回 VIXDataDict 或 error dict
+
+# 統一輸出格式
+def format_f06_output(date, status, data) -> str:
+    # 成功: "2025.12.15  F06: 臺指選擇權波動率指數 : 18.50 [TAIFEX]"
+    # 失敗: "F06 錯誤: ..."
+    # 異常: "F06 錯誤: ... (YYYY-MM-DD HH:MM:SS, context)"
+```
+
+### Phase 3: 測試 ✅
+
+- **34 個測試全部通過** (100% 成功率)
+  - 7 個單元測試 (格式化輸出)
+  - 5 個單元測試 (數據提取)
+  - 7 個異常測試 (date format, timeout, HTTP 4xx/5xx, network error)
+  - 8 個邊界情況測試 (empty string, spaces, invalid dates)
+  - 5 個集成測試 (complete fetch workflow)
+  - 3 個輸出格式驗證
+  - 4 個日期驗證測試
+
+**測試運行：**
+
+```bash
+cd f06_package
+python -m pytest test_f06_openspec.py -v
+# 或
+python test_f06_openspec.py
+```
+
+**測試覆蓋：**
+
+- ✅ 日期格式驗證和轉換
+- ✅ HTML 表格解析（單層和 MultiIndex）
+- ✅ VIX 數據提取（7 種欄位名稱變體）
+- ✅ 輸出格式化（成功、失敗、異常）
+- ✅ 精度控制（2 位小數）
+- ✅ 所有異常情況
+
+### Phase 4: 部署 ✅
+
+- **生產部署完成** (2025-12-15 21:47:42)
+- **驗證測試** (模組導入成功、fetch 返回有效格式、main() 正常運作)
+- **無備份** (首次部署)
+
+**部署狀態：**
+
+```
+Location: ../modules/f06_fetcher.py
+Version: v1.0
+Status: ACTIVE (正式環境)
+Deployment Time: 2025-12-15 21:47:42
+Source: f06_package/f06_openspec_dev.py
 ```
 
 ---
@@ -160,6 +355,7 @@ Backup: ../modules/f01_fetcher.py.backup.v6.0
 **格式：** `YYYY.MM.DD  FXX: [描述] [內容] : [數據] [單位] [TAIFEX]`
 
 **F01 範例：**
+
 ```
 2025.12.15  F01: 台指期貨外資 [未平倉] [多空淨額] : -29,032 口 [TAIFEX]
 ```
@@ -169,6 +365,7 @@ Backup: ../modules/f01_fetcher.py.backup.v6.0
 **格式：** `F01 錯誤: [錯誤訊息] [TAIFEX]`
 
 **範例：**
+
 ```
 F01 錯誤: 該日無交易資料（可能是假日或休市日） [TAIFEX]
 ```
@@ -178,6 +375,7 @@ F01 錯誤: 該日無交易資料（可能是假日或休市日） [TAIFEX]
 **格式：** `F01 錯誤: [訊息] [TAIFEX] (YYYY-MM-DD HH:MM:SS, [上下文])`
 
 **範例：**
+
 ```
 F01 錯誤: 連線逾時，請檢查網路連線 [TAIFEX] (2025-12-15 14:30:45, timeout=30s)
 F01 錯誤: HTTP 錯誤 404 [TAIFEX] (2025-12-15 14:30:45, status_code=404)
@@ -188,12 +386,14 @@ F01 錯誤: HTTP 錯誤 404 [TAIFEX] (2025-12-15 14:30:45, status_code=404)
 ## 🔧 開發規範（核心 4 點）
 
 ### 1️⃣ 回傳類型
+
 ```python
 def fetch(date: str) -> str:  # ✅ 必須是 str，不能是 dict
     return "2025.12.15  F01: ..."  # ✅ 統一文字格式
 ```
 
 ### 2️⃣ 異常處理
+
 ```python
 def fetch(date: str) -> str:
     try:
@@ -205,6 +405,7 @@ def fetch(date: str) -> str:
 ```
 
 ### 3️⃣ 日期格式轉換
+
 ```python
 # 輸入：YYYY-MM-DD (例: 2025-12-15)
 # 輸出：YYYY.MM.DD (例: 2025.12.15)
@@ -214,6 +415,7 @@ return f"{date_formatted}  F01: ..."
 ```
 
 ### 4️⃣ 日誌記錄
+
 ```python
 import logging
 logger = logging.getLogger(__name__)
@@ -242,6 +444,7 @@ copy ..\\_template_spec.md design.md
 ### 第二步：撰寫設計文檔
 
 編輯 `design.md`，包含：
+
 - **目標**：模組要解決什麼問題
 - **資料來源**：URL、API 端點
 - **字段定義**：需抓取的字段及說明
@@ -493,6 +696,7 @@ def main():
 ## 🔄 更新日誌
 
 ### v7.0 (2025-12-15) ✅ 最新
+
 - ✨ 完全 OpenSpec 實現
 - 📚 4,500+ 字詳細文檔
 - 🔑 TypedDict 類型定義
@@ -500,10 +704,12 @@ def main():
 - 🚀 已部署至生產環境
 
 ### v6.0 (2025-12-12)
+
 - 基礎實現
 - 備份保留 (f01_fetcher.py.backup.v6.0)
 
 ### v5.0 及更早版本
+
 - 舊版架構（不推薦參考）
 
 ---
@@ -544,17 +750,20 @@ c:\Taifex\
 ## 🎓 學習路徑
 
 ### 初學者（第一週）
+
 1. 讀本文件 (30 分鐘)
 2. 讀共同開發規範書 (30 分鐘)
 3. 研究 F01 代碼 (2 小時)
 4. 試寫簡單模組 (4 小時)
 
 ### 進階開發者（持續）
+
 1. 參考 F01 OpenSpec 實現 (2 小時)
 2. 學習 TypedDict 應用 (1 小時)
 3. 應用到自己的模組 (4 小時)
 
 ### 專家級（回顧和優化）
+
 1. 複習 OpenSpec 4 相位 (1 小時)
 2. 優化既有模組 (按需)
 3. 指導新開發者 (持續)
