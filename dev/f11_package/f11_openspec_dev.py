@@ -342,29 +342,3 @@ if __name__ == "__main__":
     result = fetch_taiex_index()
     print(result)
     logger.info("測試完成")
-
-
-# ============================================================================
-# WRAPPER FUNCTION FOR run.py INTEGRATION
-# ============================================================================
-
-def fetch(query_date: str = None) -> str:
-    """
-    Wrapper function for run.py integration.
-    
-    This function provides compatibility with the run.py orchestration system.
-    
-    Args:
-        query_date (str, optional): The date to fetch data for (format: YYYY-MM-DD).
-                                   If not provided, uses today's date.
-    
-    Returns:
-        str: Formatted result string compatible with run.py expectations
-    
-    Note:
-        The TWSE website provides real-time data, so the query_date parameter
-        is not used in the actual data fetching. The function always returns
-        the latest available index value.
-    """
-    # Note: query_date is accepted but not used since TWSE provides real-time data
-    return fetch_taiex_index()
