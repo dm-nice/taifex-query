@@ -11,7 +11,17 @@
       "Bash(python:*)",
       "Bash(cat:*)",
       "Bash(dir /B \"C:\\Taifex\\data\\2025-12-15_*_f15_fetcher.txt\")",
-      "Bash(timeout 30 python:*)"
+      "Bash(timeout 30 python:*)",
+      "Bash(grep:*)",
+      "Bash(dir /B c:Taifexdev)",
+      "Bash(dir:*)",
+      "Bash(openspec list:*)",
+      "SlashCommand(/openspec:proposal)",
+      "Bash(mkdir:*)",
+      "Bash(openspec validate:*)",
+      "SlashCommand(/openspec:apply)",
+      "Bash(copy devf12_packagef12_openspec_dev.py modulesf12_fetcher.py)",
+      "Bash(cmd /c dir /B data2025-12-17_*_f12_fetcher.txt)"
     ],
     "deny": [],
     "ask": []
