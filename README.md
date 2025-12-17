@@ -57,11 +57,13 @@ data/
 **輸出格式範例**：
 
 成功時：
+
 ```
 [ 2025.12.03  F01台指期外資淨額 -29,439 口（多方 19,214，空方 48,653）   source: TAIFEX ]
 ```
 
 錯誤時：
+
 ```
 [ 2025.11.30  F01 錯誤: 該日無交易資料（可能是假日或休市日）   source: TAIFEX ]
 ```
@@ -108,24 +110,34 @@ C:\Taifex\
 
 ## 📖 文件導覽
 
-### 我想要...
+### 我想要
 
 #### 🚀 使用這個專案
+
 - **[README.md](README.md)** - 本文件，安裝和使用指南
 
-#### ⚡ 開發新模組
-- **[開發目錄說明](dev/README.md)** - 開發流程、範例、常見錯誤
-- **[共同開發規範書](dev/共同開發規範書_V1.md)** ⭐
-  - 📋 快速參考章節（10分鐘入門）
-  - 📚 完整開發規範（深入學習）
-- **[程式碼範本](dev/_template.py)** - 新模組程式碼起點
-- **[規格書範本](dev/_template_spec.md)** - 新模組規格書模板
+#### ⚡ 開發新模組（OpenSpec 框架）
+
+- **[F11 完整範本](dev/f11_package/)** ⭐ - 標準 OpenSpec 實現
+  - 5 份規範文件 + OpenSpec 驗證
+  - 380 行生產代碼
+  - 21 個單元測試 (90%+ 覆蓋率)
+  - 完整部署與驗證
+- **[共同開發規範書](dev/共同開發規範書_V1.md)** - 舊規範參考（相容性）
+- **[開發目錄說明](dev/README.md)** - 開發流程總覽
 
 #### 📚 範例參考
-- **[F01 程式碼](modules/f01_fetcher.py)** - 最佳實踐範例
-- **[F01 規格書](dev/f01_package/f01_fetcher_開發規範書.md)** - 完整規格範例
+
+- **[F11 OpenSpec 實現](dev/f11_package/)** ⭐ - 推薦作為標準範本
+  - Code: f11_openspec_dev.py (Selenium 動態頁面)
+  - Test: test_f11_openspec.py (21 個測試)
+  - Docs: openspec/ (5 份文件)
+  - Report: IMPLEMENTATION_REPORT.md
+- **[F06 程式碼](modules/f06_fetcher.py)** - Selenium 實現參考
+- **[F01 程式碼](modules/f01_fetcher.py)** - 舊格式參考
 
 #### ⚙️ 設定 Claude Code
+
 - **[CLAUDE_CONFIG.md](CLAUDE_CONFIG.md)** - Claude Code 配置說明
 
 ### 📋 文件關係圖
@@ -135,13 +147,13 @@ README.md (專案入口)
     ↓
     ├─ 使用專案 → 安裝、執行、輸出說明（本文件）
     │
-    ├─ 開發模組 → dev/README.md (開發目錄總覽) ⭐
-    │           → dev/共同開發規範書_V1.md (完整規範)
-    │           → dev/_template.py (程式碼範本)
-    │           → dev/_template_spec.md (規格書範本)
+    ├─ 開發模組 → dev/f11_package/ (完整 OpenSpec 範本) ⭐
+    │           → dev/共同開發規範書_V1.md (舊規範參考)
+    │           → dev/README.md (開發目錄總覽)
     │
-    ├─ 範例參考 → modules/f01_fetcher.py (程式碼範例)
-    │           → dev/f01_package/ (規格書範例)
+    ├─ 範例參考 → modules/f11_fetcher.py (生產代碼)
+    │           → dev/f11_package/f11_openspec_dev.py (開發代碼)
+    │           → modules/f06_fetcher.py (Selenium 參考)
     │
     ├─ Claude Code → CLAUDE_CONFIG.md (配置說明)
     │              → CLAUDE_RESPONSE_GUIDE.md (AI 回應規範)
@@ -149,58 +161,96 @@ README.md (專案入口)
     └─ 討論記錄 → Claude跨討論組_log.md (跨對話記錄)
 ```
 
-## 🔨 開發新模組
+## 🔨 開發新模組（OpenSpec 框架）
 
-### 快速入門（5 步驟）
+### 四個 Phase（4-6 小時）
 
-1. **閱讀開發指南** ⭐
-   - [dev/README.md](dev/README.md) - 開發流程總覽
-   - [共同開發規範書](dev/共同開發規範書_V1.md) - 快速參考章節（10分鐘）
+**⭐ 參考範本**: [F11 完整實現](dev/f11_package/)
 
-2. **創建開發包**
-   ```bash
-   mkdir dev\f02_package
-   ```
+#### **Phase 1: 文件與規範** (1-2 小時)
 
-3. **複製範本**
-   ```bash
-   copy dev\_template.py dev\f02_package\f02_fetcher_dev.py
-   copy dev\_template_spec.md dev\f02_package\f02_fetcher_開發規範書.md
-   ```
+```bash
+# 1. 創建開發包
+mkdir dev\f02_package
+cd dev\f02_package
+openspec init
 
-4. **實作程式碼**
-   ```python
-   def fetch(date: str) -> str:
-       """抓取指定日期的資料"""
-       # 實作邏輯...
-       return f"[ {date_formatted}  F02{描述}   source: {來源} ]"
-   ```
+# 2. 撰寫規範文件
+# - openspec/project.md (項目概述)
+# - openspec/changes/<change-id>/proposal.md (變更提案)
+# - openspec/changes/<change-id>/design.md (技術設計)
+# - openspec/changes/<change-id>/tasks.md (實現清單)
+# - openspec/changes/<change-id>/specs/<capability>/spec.md (功能規格)
 
-5. **測試驗收**
-   ```bash
-   python dev\f02_package\f02_fetcher_dev.py 2025-12-03
-   python run.py 2025-12-03 dev --module f02_fetcher_dev
-   ```
+# 3. 驗證規範（必須）
+openspec validate <change-id> --strict
+```
 
-### 四大核心規範
+#### **Phase 2: 代碼實現** (1.5-2 小時)
 
-1. ✅ **回傳類型**：必須是 `str`（統一文字格式）
-2. ✅ **錯誤處理**：所有錯誤都轉換為文字格式，不拋出例外
-3. ✅ **日期格式**：輸入 `YYYY-MM-DD` → 輸出 `YYYY.MM.DD`
-4. ✅ **模組代號**：大寫（F01, F02...）
+```python
+# f02_openspec_dev.py (350+ 行)
+def fetch_f02() -> str:
+    """抓取 F02 資料"""
+    # 完整實現：異常處理、日誌、格式化
+    return f"2025.12.03  F02: {描述} : {數值} [{來源]"
+
+def fetch(query_date: str = None) -> str:
+    """run.py 集成包裝函數"""
+    return fetch_f02()
+```
+
+#### **Phase 3: 完整測試** (1-1.5 小時)
+
+```bash
+# test_f02_openspec.py (400+ 行，15+ 個測試)
+pytest test_f02_openspec.py -v --cov
+
+# 驗收標準：
+# - 15+ 個單元測試全部通過
+# - 90%+ 代碼覆蓋率
+# - 6 個測試分類（格式、提取、錯誤、邊界、日誌、整合）
+```
+
+#### **Phase 4: 部署上線** (0.5 小時)
+
+```bash
+# 複製到生產模組目錄
+copy f02_openspec_dev.py ..\..\modules\f02_fetcher.py
+
+# 集成測試
+python ..\..\run.py 2025-12-03 --module f02_fetcher
+
+# 歸檔變更
+openspec archive <change-id> --yes
+```
+
+### 核心規範
+
+| 項目 | 要求 |
+|------|------|
+| **Phase 1** | openspec 驗證通過 (`--strict` 模式) |
+| **Phase 2** | 380+ 行代碼，完整異常處理 |
+| **Phase 3** | 15+ 個測試，90%+ 覆蓋率，pytest 通過 |
+| **Phase 4** | run.py 集成成功，實時驗證數據 |
+| **輸出格式** | `YYYY.MM.DD  FXX: [描述] : [值] [來源]` |
+| **錯誤格式** | `F11 錯誤: [訊息] [來源]` (無拋出例外) |
 
 詳細說明請參考：
-- [dev/README.md](dev/README.md) - 完整開發流程、常見錯誤
-- [共同開發規範書](dev/共同開發規範書_V1.md) - 詳細技術規範
+
+- **[F11 完整範本](dev/f11_package/)** ⭐ - 所有 4 個 Phase 的完整實現
+- [共同開發規範書](dev/共同開發規範書_V1.md) - 舊規範參考（相容性）
 
 ## 🧪 測試
 
 ### 測試單一模組
+
 ```bash
 python modules/f01_fetcher.py 2025-12-03
 ```
 
 ### 執行所有模組（驗收模式）
+
 ```bash
 python run.py 2025-12-03 dev
 ```
@@ -231,21 +281,25 @@ python run.py 2025-12-03 dev
 ## 📊 輸出格式詳細說明
 
 ### 成功格式
+
 ```
 [ {日期}  {模組代號}{描述}   source: {來源} ]
 ```
 
 **範例**：
+
 ```
 [ 2025.12.03  F01台指期外資淨額 -29,439 口（多方 19,214，空方 48,653）   source: TAIFEX ]
 ```
 
 ### 錯誤格式
+
 ```
 [ {日期}  {模組代號} 錯誤: {錯誤訊息}   source: {來源} ]
 ```
 
 **範例**：
+
 ```
 [ 2025.11.30  F01 錯誤: 該日無交易資料（可能是假日或休市日）   source: TAIFEX ]
 ```
@@ -269,6 +323,7 @@ python run.py 2025-12-03 dev
 ## 📞 聯絡與支援
 
 如有問題或建議：
+
 - 提交 GitHub Issue
 - 參考文件：[共同開發規範書](dev/共同開發規範書_V1.md)
 
