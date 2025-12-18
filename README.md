@@ -1,3 +1,5 @@
+[![My First Action](https://github.com/dm-nice/taifex-query/actions/workflows/ci.yml/badge.svg)](https://github.com/dm-nice/taifex-query/actions/workflows/ci.yml)
+
 # 台指期貨20因子預測系統
 
 基於20個市場因子分析台指期貨隔日漲跌趨勢的預測系統。
