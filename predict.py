@@ -2,8 +2,10 @@ import json
 import os
 from datetime import datetime
 
-# 1. 數據目錄
-DATA_DIR = r"C:\Taifex\data"
+# 1. 數據與歷史檔案路徑
+BASE_DIR = r"C:\Taifex"
+DATA_DIR = os.path.join(BASE_DIR, "data")
+HISTORY_FILE = os.path.join(BASE_DIR, "history.json")
 
 def get_latest_factors():
     factors = {}
@@ -16,52 +18,67 @@ def get_latest_factors():
                 factors[factor_key] = val
     return factors
 
-def multi_weight_analyze(factors):
-    # 轉換數值並設定初始分數 (50為中性)
-    f01 = float(factors.get('F01', 0))  # 外資期貨淨OI
-    f06 = float(factors.get('F06', 20)) # 波動率 (基準值20)
-    f07 = float(factors.get('F07', 100))# P/C Ratio (基準100%)
-    f17 = float(factors.get('F17', 0))  # 外資現貨買賣超
+def calculate_logic(factors):
+    # 讀取當前數值
+    f11_now = float(factors.get('F11', 0)) # 加權指數
+    f14_now = float(factors.get('F14', 0)) # 台積電
+    f01 = float(factors.get('F01', 0))    # 外資淨OI
     
+    # 讀取歷史紀錄
+    history = {"win_count": 0, "total_count": 0, "last_prediction": "", "last_f11": 0, "last_f14": 0}
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
+            history.update(json.load(f))
+
+    # --- A. 勝率計算 ---
+    if history["last_prediction"] and history["last_f11"] > 0:
+        actual_move = "上漲" if f11_now > history["last_f11"] else "下跌"
+        history["total_count"] += 1
+        if actual_move == history["last_prediction"]:
+            history["win_count"] += 1
+    
+    win_rate = (history["win_count"] / history["total_count"] * 100) if history["total_count"] > 0 else 0
+
+    # --- B. 技術面斜率評分 ---
     score = 50
     reasons = []
+    
+    # 台積電斜率判斷 (F14)
+    if history["last_f14"] > 0:
+        slope = f14_now - history["last_f14"]
+        if slope > 5:
+            score += 15; reasons.append(f"台積電斜率向上(+{slope})")
+        elif slope < -5:
+            score -= 15; reasons.append(f"台積電斜率向下({slope})")
 
-    # 權重 1: 外資期貨 (最重要)
-    if f01 < -30000: score -= 25; reasons.append("期貨極度偏空")
-    elif f01 > 10000: score += 15; reasons.append("期貨多單支撐")
+    # 籌碼面權重 (F01)
+    if f01 < -25000: score -= 20; reasons.append("期貨空單壓力")
 
-    # 權重 2: 外資現貨
-    if f17 < -300: score -= 15; reasons.append("外資提款現貨")
-    elif f17 > 200: score += 10; reasons.append("外資回補現貨")
+    # 判定最終結果
+    res = "上漲" if score > 55 else ("下跌" if score < 45 else "盤整")
+    
+    # 更新歷史紀錄
+    history.update({
+        "last_prediction": res,
+        "last_f11": f11_now,
+        "last_f14": f14_now
+    })
+    with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
+        json.dump(history, f, indent=4)
 
-    # 權重 3: P/C Ratio (選擇權情緒)
-    if f07 < 90: score -= 10; reasons.append("選擇權籌碼偏空")
-    elif f07 > 110: score += 10; reasons.append("選擇權籌碼看多")
+    return res, f"{win_rate:.1f}%", " | ".join(reasons) if reasons else "指標中性"
 
-    # 權重 4: 波動率 (恐慌指數)
-    if f06 > 22: score -= 10; reasons.append("市場恐慌情緒升溫")
-
-    # 判定結果
-    if score <= 30: res, rng, conf = "下跌", "-200 至 -400", 92
-    elif score < 48: res, rng, conf = "盤整偏空", "-50 至 -150", 75
-    elif score <= 55: res, rng, conf = "盤整", "-50 至 +50", 60
-    elif score < 70: res, rng, conf = "盤整偏多", "+50 至 +150", 75
-    else: res, rng, conf = "上漲", "+200 至 +350", 90
-
-    return res, rng, str(conf), " | ".join(reasons) if reasons else "指標趨於中性"
-
-# --- 執行流程 ---
+# 執行並更新 README
 factors = get_latest_factors()
-res, rng, conf, summary = multi_weight_analyze(factors)
+res, win_rate_str, summary = calculate_logic(factors)
 
 prediction = {
     "數據日期": datetime.now().strftime('%Y/%m/%d'),
     "隔日預測結果": res,
-    "預測漲跌點數範圍": rng,
-    "信心分數": conf,
+    "系統歷史勝率": win_rate_str,
     "關鍵驅動因子": {
-        "強度因子一": "F01(外資淨OI): " + factors.get('F01', '0') + " 口",
-        "強度因子二": "F07(P/C Ratio): " + factors.get('F07', '0') + "%"
+        "技術面因子": "F11(大盤): " + factors.get('F11', '0') + " / F14(台積電): " + factors.get('F14', '0'),
+        "籌碼面因子": "F01(外資淨OI): " + factors.get('F01', '0')
     },
     "推理總結": summary
 }
@@ -72,7 +89,7 @@ full_content = "# 台指期預測系統 (TAIEX Prediction)\n" + \
                "## 最後自動更新時間: " + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "\n\n" + \
                "```json\n" + json.dumps(prediction, indent=4, ensure_ascii=False) + "\n```\n"
 
-with open("README.md", "w", encoding="utf-8") as f:
+with open(os.path.join(BASE_DIR, "README.md"), "w", encoding="utf-8") as f:
     f.write(full_content)
 
-print("多權重模型預測成功並已更新 README.md")
+print(f"系統已更新。歷史檔案路徑: {HISTORY_FILE}")
