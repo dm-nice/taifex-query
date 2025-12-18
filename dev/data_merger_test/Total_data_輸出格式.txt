@@ -1,0 +1,14 @@
+# 台灣期貨 20 因子預測系統 - 整合資料
+# 整合時間: 2025-12-18 10:29:15
+# 資料來源: C:\Taifex\data
+# 檔案數量: 7
+#======================================================================
+
+
+2025.12.18  F01: 台指期貨外資 [未平倉] [多空淨額]  : -29,032 口  [https://www.taifex.com.tw/cht/3/futContractsDate]
+2025.12.18  F02: 台指期貨外資 [未平倉] [多方]      : 16,177 口   [https://www.taifex.com.tw/cht/3/futContractsDate]
+2025.12.18  F03: 台指期貨外資 [未平倉] [空方]      : 45,209 口   [https://www.taifex.com.tw/cht/3/futContractsDate]
+2025.12.18  F04: 台指期貨當日收盤價 (Day N Close)  : 27,410.0   [https://www.taifex.com.tw/cht/3/futDailyMarketReport]
+2025.12.18  F05: 台指期貨選擇權總成交量            : 712,272 口  [https://www.taifex.com.tw/cht/3/optDailyMarketReport]
+2025.12.18  F06: 臺指選擇權波動率指數              : 22.01       [https://mis.taifex.com.tw/futures/VolatilityQuotes]
+2025.12.18  F07: 臺指選擇權(TXO)買賣權未平倉量比率% : 107.75%     [https://www.taifex.com.tw/cht/3/pcRatio]

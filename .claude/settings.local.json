@@ -23,7 +23,9 @@
       "Bash(copy devf12_packagef12_openspec_dev.py modulesf12_fetcher.py)",
       "Bash(cmd /c dir /B data2025-12-17_*_f12_fetcher.txt)",
       "Bash(timeout 60 python:*)",
-      "Bash(cmd /c dir /B data2025-12-17_*_f*.txt)"
+      "Bash(cmd /c dir /B data2025-12-17_*_f*.txt)",
+      "Bash(cmd /c \"dir /B C:\\\\Taifex\\\\data\\\\*.txt | head -20\")",
+      "Bash(python merge_data.py:*)"
     ],
     "deny": [],
     "ask": []

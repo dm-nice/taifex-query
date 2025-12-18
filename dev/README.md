@@ -286,6 +286,107 @@ logger.error(f"[F11] {date} 異常: {error}")
 
 ---
 
+## 🔍 模組資料抓取方式分析
+
+### 📊 技術分類總覽
+
+本專案的 14 個模組使用了 **3 種不同的資料抓取技術**：
+
+| 抓取方式 | 模組數量 | 模組編號 | 特點 |
+|---------|---------|---------|------|
+| **API (JSON)** | 4 個 (29%) | F12, F13, F15, F17 | ⚡ 最快、最穩定 |
+| **HTTP + HTML 解析** | 8 個 (57%) | F01-F05, F07, F14, F16 | 📊 最常用、適合靜態表格 |
+| **Selenium (瀏覽器)** | 2 個 (14%) | F06, F11 | 🌐 處理動態 JavaScript |
+
+---
+
+### 1️⃣ API 方式（JSON 格式）- 4 個模組
+
+**使用模組**: F12, F13, F15, F17
+
+| 模組 | 功能 | API 端點 |
+|------|------|---------|
+| **F12** | 台股每日成交金額 | `FMTQIK?date=...&response=json` |
+| **F13** | 加權指數與20日均線距離 | `MI_INDEX?date=...&response=json` |
+| **F15** | 台積電當日漲跌價差 | `STOCK_DAY?stockNo=2330&response=json` |
+| **F17** | 外資及陸資買賣差額 | `BFI82U?...&response=json` |
+
+**技術特點**:
+```python
+# 典型實現
+response = requests.get(url, params={'response': 'json'})
+data = response.json()  # 直接解析 JSON
+```
+
+**優點**: ✅ 速度快、穩定性高、不受網頁改版影響
+
+---
+
+### 2️⃣ HTTP + HTML 解析 - 8 個模組
+
+**使用模組**: F01, F02, F03, F04, F05, F07, F14, F16
+
+| 模組 | 功能 | 資料源 |
+|------|------|--------|
+| **F01** | 台指期貨外資多空淨額 | TAIFEX 期貨契約 |
+| **F02** | 台指期貨外資多方 | TAIFEX 期貨契約 |
+| **F03** | 台指期貨外資空方 | TAIFEX 期貨契約 |
+| **F04** | 台指期貨當日收盤價 | TAIFEX 期貨行情 |
+| **F05** | 台指期貨選擇權總成交量 | TAIFEX 選擇權行情 |
+| **F07** | 臺指選擇權買賣權未平倉量比率 | TAIFEX PC Ratio |
+| **F14** | 台積電當日收盤價 | TWSE 個股日成交 |
+| **F16** | 台積電當日成交股數 | TWSE 個股日成交 |
+
+**技術特點**:
+```python
+# 典型實現
+response = requests.get(url, headers=headers, timeout=30)
+tables = pd.read_html(response.text)  # pandas 解析 HTML 表格
+df = tables[0]  # 選擇目標表格
+```
+
+**優點**: ✅ 適合靜態 HTML 表格、pandas 自動解析
+
+---
+
+### 3️⃣ Selenium（瀏覽器自動化）- 2 個模組
+
+**使用模組**: F06, F11
+
+| 模組 | 功能 | 為何需要 Selenium |
+|------|------|------------------|
+| **F06** | 臺指選擇權波動率指數 | JavaScript 動態載入 VIX 數據 |
+| **F11** | 加權股價收盤指數 | JavaScript 動態渲染表格 |
+
+**技術特點**:
+```python
+# 典型實現
+from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+
+driver = webdriver.Chrome(options=options)
+driver.get(url)
+WebDriverWait(driver, 10).until(
+    EC.presence_of_element_located((By.TAG_NAME, "table"))
+)
+html_content = driver.page_source  # 取得渲染後的 HTML
+```
+
+**優點**: ✅ 可抓取 JavaScript 動態內容、處理互動式頁面
+**缺點**: ❌ 速度較慢、資源消耗較大
+
+---
+
+### 💡 技術選擇指南
+
+| 資料源類型 | 推薦技術 | 理由 |
+|-----------|---------|------|
+| 提供 JSON API | API (JSON) | 最快、最穩定 |
+| 靜態 HTML 表格 | HTTP + pd.read_html | 快速、簡單 |
+| JavaScript 動態網頁 | Selenium | 慢但必要 |
+
+---
+
 ## 📞 文件導覽
 
 | 文件 | 說明 | 優先級 |
@@ -297,6 +398,6 @@ logger.error(f"[F11] {date} 異常: {error}")
 
 ---
 
-**版本**: v2.0 (F11 標準)  
-**狀態**: ✅ 生產就緒  
-**最後更新**: 2025-12-17
+**版本**: v2.1 (新增資料抓取方式分析)
+**狀態**: ✅ 生產就緒
+**最後更新**: 2025-12-18
