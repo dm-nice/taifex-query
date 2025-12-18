@@ -1,0 +1,73 @@
+name: Daily Taifex Data Fetch
+on:
+  schedule:
+    # 每天 21:00 台北時間 (UTC+8) = 13:00 UTC
+    - cron: '0 13 * * *'
+  
+  # 允許手動觸發
+  workflow_dispatch:
+    inputs:
+      date:
+        description: '查詢日期 (YYYY-MM-DD，留空則使用今天)'
+        required: false
+        type: string
+
+jobs:
+  run-taifex:
+    runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Taipei
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pandas pydantic pydantic-settings lxml
+      
+      - name: 🚀 Run Taifex data fetch
+        run: |
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            DATE_ARG="${{ github.event.inputs.date }}"
+          else
+            DATE_ARG=$(date +%Y-%m-%d)
+          fi
+          python run.py "$DATE_ARG"
+          
+      - name: 📦 Pack results
+        id: pack
+        run: |
+          TIMESTAMP=$(date +'%Y%m%d-%H%M')
+          FILENAME="taifex-data-${TIMESTAMP}.tar.gz"
+          tar -czf "$FILENAME" data/
+          echo "filename=$FILENAME" >> $GITHUB_OUTPUT
+
+      - name: 📤 Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pack.outputs.filename }}
+          path: ${{ steps.pack.outputs.filename }}
+          retention-days: 30
+      
+      - name: 💾 Commit and push results
+        if: success()
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          # 檢查是否有變更
+          if ! git diff --quiet data/; then
+            git add data/
+            git commit -m "🤖 Auto-update: Taifex data for $(date +%Y-%m-%d)"
+            git push
+          else
+            echo "✅ No data changes to commit."
+          fi
+        continue-on-error: true
