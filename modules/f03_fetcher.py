@@ -51,17 +51,17 @@ def format_f03_output(date: str, status: str, data: Optional[Dict] = None, error
 
     Returns:
         統一格式文字字串 v5.0
-        成功時: F03: 台指期貨外資 [未平倉] [空方] : 48,000 口 [TAIFEX]
-        失敗時: F03 錯誤: {錯誤訊息} [TAIFEX]
+        成功時: F03: 台指期貨外資 [未平倉] [空方] : 48,000 口 [https://www.taifex.com.tw/cht/3/futContractsDate]
+        失敗時: F03 錯誤: {錯誤訊息} [https://www.taifex.com.tw/cht/3/futContractsDate]
     """
     if status == "success" and data:
         short_pos = data.get("short_position", 0)
         source = data.get("source", "TAIFEX")
         formatted_date = date.replace("-", ".")
-        return f"{formatted_date}  F03: 台指期貨外資 [未平倉] [空方] : {short_pos:,} 口 [TAIFEX]"
+        return f"{formatted_date}  F03: 台指期貨外資 [未平倉] [空方] : {short_pos:,} 口  [https://www.taifex.com.tw/cht/3/futContractsDate]"
     else:
         error_msg = error or "未知錯誤"
-        return f"F03 錯誤: {error_msg} [TAIFEX]"
+        return f"F03 錯誤: {error_msg} [https://www.taifex.com.tw/cht/3/futContractsDate]"
 
 
 def convert_to_int(value) -> int:

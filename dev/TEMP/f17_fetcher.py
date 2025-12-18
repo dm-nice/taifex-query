@@ -22,14 +22,25 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-# Windows 環境強制使用 UTF-8
-if sys.platform == "win32":
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
+# 設定 UTF-8 輸出（解決 Windows 終端亂碼，PyInstaller 已處理打包的情境）
+# 只在尚未包裝時才進行包裝，避免重複包裝導致 I/O 錯誤
+if sys.platform == 'win32' and not getattr(sys, "frozen", False):
+    if not hasattr(sys.stdout, '_wrapped_for_utf8') and hasattr(sys.stdout, 'buffer'):
+        try:
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+            sys.stdout._wrapped_for_utf8 = True
+        except (AttributeError, ValueError):
+            pass
+    if not hasattr(sys.stderr, '_wrapped_for_utf8') and hasattr(sys.stderr, 'buffer'):
+        try:
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+            sys.stderr._wrapped_for_utf8 = True
+        except (AttributeError, ValueError):
+            pass
 
 MODULE_ID = "f17"
 MODULE_NAME = "f17_fetcher"
-SOURCE = "twse.com.tw"
+SOURCE = "https://www.twse.com.tw/fund/BFI82U"
 API_URL = "https://www.twse.com.tw/fund/BFI82U"
 REQUEST_TIMEOUT = 20
 REFERER = "https://www.twse.com.tw/zh/trading/foreign/bfi82u.html"

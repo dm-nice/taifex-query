@@ -23,9 +23,15 @@ from typing import Dict, Optional
 from datetime import datetime
 
 # 設定 UTF-8 輸出（解決 Windows 終端亂碼）
+# 只在尚未包裝時才進行包裝，避免重複包裝導致 I/O 錯誤
 if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+    if not getattr(sys, "frozen", False):
+        if not hasattr(sys.stdout, '_wrapped_for_utf8'):
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+            sys.stdout._wrapped_for_utf8 = True
+        if not hasattr(sys.stderr, '_wrapped_for_utf8'):
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+            sys.stderr._wrapped_for_utf8 = True
 
 # 模組識別
 MODULE_ID = "f02"
@@ -52,17 +58,17 @@ def format_f02_output(date: str, status: str, data: Optional[Dict] = None, error
 
     Returns:
         統一格式文字字串 v5.0
-        成功時: F02: 台指期貨外資 [未平倉] [多方] : 18,268 口 [TAIFEX]
-        失敗時: F02 錯誤: {錯誤訊息} [TAIFEX]
+        成功時: F02: 台指期貨外資 [未平倉] [多方] : 18,268 口 [https://www.taifex.com.tw/cht/3/futContractsDate]
+        失敗時: F02 錯誤: {錯誤訊息} [https://www.taifex.com.tw/cht/3/futContractsDate]
     """
     if status == "success" and data:
         long_pos = data.get("long_position", 0)
         source = data.get("source", "TAIFEX")
         formatted_date = date.replace("-", ".")
-        return f"{formatted_date}  F02: 台指期貨外資 [未平倉] [多方] : {long_pos:,} 口 [TAIFEX]"
+        return f"{formatted_date}  F02: 台指期貨外資 [未平倉] [多方] : {long_pos:,} 口  [https://www.taifex.com.tw/cht/3/futContractsDate]"
     else:
         error_msg = error or "未知錯誤"
-        return f"F02 錯誤: {error_msg} [TAIFEX]"
+        return f"F02 錯誤: {error_msg} [https://www.taifex.com.tw/cht/3/futContractsDate]"
 
 
 def convert_to_int(value) -> int:

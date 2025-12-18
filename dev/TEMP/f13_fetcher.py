@@ -21,15 +21,26 @@ from typing import Dict, List, Optional, Tuple
 
 import requests
 
-# Windows 預設為 cp65001，強制設定為 utf-8
-if sys.platform == "win32":
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
+# 設定 UTF-8 輸出（解決 Windows 終端亂碼，PyInstaller 已處理打包的情境）
+# 只在尚未包裝時才進行包裝，避免重複包裝導致 I/O 錯誤
+if sys.platform == 'win32' and not getattr(sys, "frozen", False):
+    if not hasattr(sys.stdout, '_wrapped_for_utf8') and hasattr(sys.stdout, 'buffer'):
+        try:
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+            sys.stdout._wrapped_for_utf8 = True
+        except (AttributeError, ValueError):
+            pass
+    if not hasattr(sys.stderr, '_wrapped_for_utf8') and hasattr(sys.stderr, 'buffer'):
+        try:
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+            sys.stderr._wrapped_for_utf8 = True
+        except (AttributeError, ValueError):
+            pass
 
 MODULE_ID = "f13"
 MODULE_NAME = "f13_fetcher"
-SOURCE = "twse.com.tw"
-TWSE_MI_URL = "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX"
+SOURCE = "https://www.twse.com.tw/zh/page/trading/exchange/MI_INDEX.html"
+TWSE_MI_URL = "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX"  # API endpoint
 REQUEST_TIMEOUT = 15
 WINDOW_SIZE = 20
 MAX_LOOKBACK_DAYS = 60

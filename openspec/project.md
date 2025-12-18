@@ -126,15 +126,16 @@ C:\Taifex/
 **範例**:
 
 ```
-✅ 2025.12.17  F11: 加權股價收盤指數 : 18254.50 [TWSE]
-❌ 2025.12.17  F11 錯誤: 該日無交易資料 [TWSE]
+✅ 2025.12.17  F11: 加權股價收盤指數 : 18254.50 [https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html]
+✅ 2025.12.17  F07: 臺指選擇權(TXO)買賣權未平倉量比率% : 107.75% [https://www.taifex.com.tw/cht/3/pcRatio]
+❌ 2025.12.17  F11 錯誤: 該日無交易資料 [https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html]
 ```
 
 ### 核心規範
 
 | 規範 | 說明 | 例子 |
 |------|------|------|
-| **回傳類型** | 必須是 `str` | `return "2025.12.17  F11: ... [TWSE]"` |
+| **回傳類型** | 必須是 `str` | `return "2025.12.17  F11: ... [https://www.twse.com.tw/...]"` |
 | **異常處理** | 異常轉為文字，不拋出 | `except Exception: return "F11 錯誤: ..."` |
 | **日期格式** | 輸入 YYYY-MM-DD → 輸出 YYYY.MM.DD | `2025-12-17` → `2025.12.17` |
 | **千分位逗號** | 數值使用千分位 | `18,254.50` ✅, `18254.50` ❌ |

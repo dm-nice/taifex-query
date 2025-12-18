@@ -22,12 +22,18 @@ from datetime import datetime
 # 設定 UTF-8 輸出（解決 Windows 終端亂碼，PyInstaller 已處理打包的情境）
 # 只在尚未包裝時才進行包裝，避免重複包裝導致 I/O 錯誤
 if sys.platform == 'win32' and not getattr(sys, "frozen", False):
-    if not hasattr(sys.stdout, '_wrapped_for_utf8'):
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-        sys.stdout._wrapped_for_utf8 = True
-    if not hasattr(sys.stderr, '_wrapped_for_utf8'):
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
-        sys.stderr._wrapped_for_utf8 = True
+    if not hasattr(sys.stdout, '_wrapped_for_utf8') and hasattr(sys.stdout, 'buffer'):
+        try:
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+            sys.stdout._wrapped_for_utf8 = True
+        except (AttributeError, ValueError):
+            pass
+    if not hasattr(sys.stderr, '_wrapped_for_utf8') and hasattr(sys.stderr, 'buffer'):
+        try:
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+            sys.stderr._wrapped_for_utf8 = True
+        except (AttributeError, ValueError):
+            pass
 
 # 模組識別
 MODULE_ID = "f05"
@@ -54,18 +60,18 @@ def format_f05_output(date: str, status: str, data: Optional[Dict] = None, error
 
     Returns:
         統一格式文字字串 v5.0
-        成功時: [YYYY.MM.DD]  F05: 台指期貨選擇權總成交量 : 430,688 口 [TAIFEX]
-        失敗時: [YYYY.MM.DD]  F05 錯誤: {錯誤訊息} [TAIFEX]
+        成功時: YYYY.MM.DD F05 : 台指期貨選擇權總成交量 : 430,688 口 [https://www.taifex.com.tw/cht/3/optDailyMarketReport]
+        失敗時: YYYY.MM.DD F05 : 台指期貨選擇權總成交量 : {錯誤訊息} [https://www.taifex.com.tw/cht/3/optDailyMarketReport]
     """
     formatted_date = date.replace("-", ".")
-    
+
     if status == "success" and data:
         volume = data.get("total_volume", 0)
         source = data.get("source", "TAIFEX")
-        return f"{formatted_date}  F05: 台指期貨選擇權總成交量 : {volume:,.0f} 口 [TAIFEX]"
+        return f"{formatted_date}  F05: 台指期貨選擇權總成交量            : {volume:,.0f} 口  [https://www.taifex.com.tw/cht/3/optDailyMarketReport]"
     else:
         error_msg = error or "未知錯誤"
-        return f"{formatted_date}  F05 錯誤: {error_msg} [TAIFEX]"
+        return f"{formatted_date}  F05: 台指期貨選擇權總成交量            : {error_msg}  [https://www.taifex.com.tw/cht/3/optDailyMarketReport]"
 
 
 def find_volume_column(df: pd.DataFrame) -> Optional[str]:

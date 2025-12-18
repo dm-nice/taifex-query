@@ -23,12 +23,18 @@ from datetime import datetime
 # 設定 UTF-8 輸出（解決 Windows 終端亂碼，PyInstaller 已處理打包的情境）
 # 只在尚未包裝時才進行包裝，避免重複包裝導致 I/O 錯誤
 if sys.platform == 'win32' and not getattr(sys, "frozen", False):
-    if not hasattr(sys.stdout, '_wrapped_for_utf8'):
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-        sys.stdout._wrapped_for_utf8 = True
-    if not hasattr(sys.stderr, '_wrapped_for_utf8'):
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
-        sys.stderr._wrapped_for_utf8 = True
+    if not hasattr(sys.stdout, '_wrapped_for_utf8') and hasattr(sys.stdout, 'buffer'):
+        try:
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+            sys.stdout._wrapped_for_utf8 = True
+        except (AttributeError, ValueError):
+            pass
+    if not hasattr(sys.stderr, '_wrapped_for_utf8') and hasattr(sys.stderr, 'buffer'):
+        try:
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+            sys.stderr._wrapped_for_utf8 = True
+        except (AttributeError, ValueError):
+            pass
 
 # 模組識別
 MODULE_ID = "f04"
@@ -54,13 +60,13 @@ def format_f04_output(date: str, status: str, data: Optional[Dict] = None, error
         error: 失敗時的錯誤訊息
 
     Returns:
-        成功時: F04: 台指期貨當日收盤價 (Day N Close) : 23,450 [TAIFEX]
-        失敗時: F04 錯誤: {錯誤訊息} [TAIFEX]
+        成功時: F04: 台指期貨當日收盤價 (Day N Close) : 23,450  [https://www.taifex.com.tw/cht/3/futDailyMarketReport]
+        失敗時: 2025.12.18  F04:台指期貨當日收盤價 (Day N Close) 錯誤: {錯誤訊息}   source: [https://www.taifex.com.tw/cht/3/futDailyMarketReport]
     """
     if status == "success" and data:
         price = data.get("close_price", 0)
         source = data.get("source", "TAIFEX")
-        
+
         # 格式化數值：如果是整數，加千分位；如果有小數，保留顯示
         if isinstance(price, (int, float)):
              price_str = f"{price:,}"
@@ -68,10 +74,11 @@ def format_f04_output(date: str, status: str, data: Optional[Dict] = None, error
              price_str = str(price)
 
         formatted_date = date.replace("-", ".")
-        return f"{formatted_date}  F04: 台指期貨當日收盤價 (Day N Close) : {price_str} [TAIFEX]"
+        return f"{formatted_date}  F04: 台指期貨當日收盤價 (Day N Close) : {price_str}  [https://www.taifex.com.tw/cht/3/futDailyMarketReport]"
     else:
         error_msg = error or "未知錯誤"
-        return f"F04 錯誤: {error_msg} [TAIFEX]"
+        formatted_date = date.replace("-", ".")
+        return f"{formatted_date}  F04:台指期貨當日收盤價 (Day N Close) 錯誤: {error_msg}   source: [https://www.taifex.com.tw/cht/3/futDailyMarketReport]"
 
 
 def convert_to_number(value) -> Optional[float]:

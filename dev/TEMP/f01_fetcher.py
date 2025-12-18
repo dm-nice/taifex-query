@@ -276,11 +276,11 @@ def format_f01_output(
         source = data.get("source", "TAIFEX")
         # v5.0 成功格式：增加日期前綴
         formatted_date = date.replace("-", ".")
-        return f"{formatted_date}  F01: 台指期貨外資 [未平倉] [多空淨額] : {net:,} 口 [TAIFEX]"
+        return f"{formatted_date}  F01: 台指期貨外資 [未平倉] [多空淨額] : {net:,} 口  [https://www.taifex.com.tw/cht/3/futContractsDate]"
     else:
         error_msg = error or "未知錯誤"
         # v5.0 錯誤格式：移除日期和中括號，統一簡潔風格
-        result = f"F01 錯誤: {error_msg} [TAIFEX]"
+        result = f"F01 錯誤: {error_msg} [https://www.taifex.com.tw/cht/3/futContractsDate]"
         
         # [NEW] 增加時間戳和上下文後綴
         suffix = ""

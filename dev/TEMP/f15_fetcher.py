@@ -17,7 +17,8 @@ f15_fetcher_dev.py - 台積電當日漲跌價差抓取模組 v1.0
   異常範例: "F15 錯誤: 連線逾時，請檢查網路連線 [TWSE] (2025-12-15 14:30:45, timeout=30s)"
 
 【資料來源】
-- API: https://www.twse.com.tw/exchangeReport/STOCK_DAY
+- 網頁: https://www.twse.com.tw/zh/trading/historical/stock-day.html
+- API: https://www.twse.com.tw/exchangeReport/STOCK_DAY (API endpoint)
 - 參數: response=json&date=YYYYMMDD&stockNo=2330
 - 資料欄位:
   - 日期: 交易日期 (114/12/15 格式)
@@ -99,12 +100,18 @@ class FetchResultDict(TypedDict, total=False):
 # 設定 UTF-8 輸出（解決 Windows 終端亂碼，PyInstaller 已處理打包的情境）
 # 只在尚未包裝時才進行包裝，避免重複包裝導致 I/O 錯誤
 if sys.platform == 'win32' and not getattr(sys, "frozen", False):
-    if not hasattr(sys.stdout, '_wrapped_for_utf8'):
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-        sys.stdout._wrapped_for_utf8 = True
-    if not hasattr(sys.stderr, '_wrapped_for_utf8'):
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
-        sys.stderr._wrapped_for_utf8 = True
+    if not hasattr(sys.stdout, '_wrapped_for_utf8') and hasattr(sys.stdout, 'buffer'):
+        try:
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+            sys.stdout._wrapped_for_utf8 = True
+        except (AttributeError, ValueError):
+            pass
+    if not hasattr(sys.stderr, '_wrapped_for_utf8') and hasattr(sys.stderr, 'buffer'):
+        try:
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+            sys.stderr._wrapped_for_utf8 = True
+        except (AttributeError, ValueError):
+            pass
 
 # 模組識別
 MODULE_ID = "f15"
@@ -168,11 +175,11 @@ def format_f15_output(
 
         # v1.0 成功格式：增加日期前綴
         formatted_date = date.replace("-", ".")
-        return f"{formatted_date}  F15: 台積電當日漲跌價差 : {change_display} 元 [TWSE]"
+        return f"{formatted_date}  F15: 台積電當日漲跌價差 : {change_display} 元 [https://www.twse.com.tw/zh/trading/historical/stock-day.html]"
     else:
         error_msg = error or "未知錯誤"
         # v1.0 錯誤格式
-        result = f"F15 錯誤: {error_msg} [TWSE]"
+        result = f"F15 錯誤: {error_msg} [https://www.twse.com.tw/zh/trading/historical/stock-day.html]"
 
         # 增加時間戳和上下文後綴
         suffix = ""

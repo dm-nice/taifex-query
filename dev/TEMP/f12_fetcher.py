@@ -296,7 +296,7 @@ def format_success(date: str, value: float) -> str:
     """
     # 格式化數值：千分位逗號 + 兩位小數
     value_formatted = f"{value:,.2f}"
-    return f"{date}  F12: 台股每日成交金額 : {value_formatted} [TWSE]"
+    return f"{date}  F12: 台股每日成交金額 : {value_formatted} [https://www.twse.com.tw/rwd/zh/afterTrading/FMTQIK]"
 
 def format_error(error_msg: str) -> str:
     """
@@ -308,7 +308,7 @@ def format_error(error_msg: str) -> str:
     Returns:
         統一格式錯誤字串
     """
-    return f"F12 錯誤: {error_msg} [TWSE]"
+    return f"F12 錯誤: {error_msg} [https://www.twse.com.tw/rwd/zh/afterTrading/FMTQIK]"
 
 # ============================================================================
 # COMMAND LINE INTERFACE (獨立測試用)

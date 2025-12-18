@@ -42,11 +42,14 @@ from selenium.webdriver.chrome.service import Service
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Create console handler if not already present
-if not logger.handlers:
+# 禁用向上傳播，避免 run.py 環境中的 stdout 問題
+logger.propagate = False
+
+# Create console handler if not already present (僅在獨立執行時使用)
+if not logger.handlers and __name__ == "__main__":
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.DEBUG)
-    
+
     # Create formatter with [F11] prefix
     formatter = logging.Formatter(
         fmt='[F11] %(asctime)s - %(levelname)s - %(message)s',
@@ -149,7 +152,7 @@ def fetch_taiex_index() -> str:
             # Try to find data in divs or other structures
             # TWSE 可能使用 JavaScript 動態載入，無法從靜態 HTML 解析
             logger.error("頁面結構異常：無法找到數據表格")
-            return f"F11 錯誤: 無法解析頁面結構 [TWSE]"
+            return f"F11 錯誤: 無法解析頁面結構 [https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html]"
         
         # ====================================================================
         # Task 2.3: 提取指數值
@@ -163,7 +166,7 @@ def fetch_taiex_index() -> str:
         table = soup.find('table')
         if not table:
             logger.error("未找到數據表格")
-            return f"F11 錯誤: 無法解析頁面結構 [TWSE]"
+            return f"F11 錯誤: 無法解析頁面結構 [https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html]"
         
         logger.debug("找到數據表格")
         
@@ -171,7 +174,7 @@ def fetch_taiex_index() -> str:
         rows = table.find_all('tr')
         if not rows or len(rows) < 2:
             logger.warning("表格為空或數據不足，無交易數據")
-            return f"F11 錯誤: 該日無交易資料（可能是假日或休市日） [TWSE]"
+            return f"F11 錯誤: 該日無交易資料（可能是假日或休市日） [https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html]"
         
         logger.debug(f"表格包含 {len(rows)} 行資料")
         
@@ -197,7 +200,7 @@ def fetch_taiex_index() -> str:
         
         if index_col is None:
             logger.error(f"無法找到指數列，可用列: {headers}")
-            return f"F11 錯誤: 無法解析頁面結構 [TWSE]"
+            return f"F11 錯誤: 無法解析頁面結構 [https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html]"
         
         # Extract index value from the last row (most recent data)
         last_row = rows[-1]
@@ -205,7 +208,7 @@ def fetch_taiex_index() -> str:
         
         if index_col >= len(cells):
             logger.error(f"列索引越界：{index_col} >= {len(cells)}")
-            return f"F11 錯誤: 無法解析頁面結構 [TWSE]"
+            return f"F11 錯誤: 無法解析頁面結構 [https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html]"
         
         index_str = cells[index_col].get_text(strip=True)
         logger.debug(f"提取的原始值: '{index_str}'")
@@ -218,14 +221,14 @@ def fetch_taiex_index() -> str:
         
         if not index_str:
             logger.warning("無法解析指數值，表格可能無數據")
-            return f"F11 錯誤: 該日無交易資料（可能是假日或休市日） [TWSE]"
+            return f"F11 錯誤: 該日無交易資料（可能是假日或休市日） [https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html]"
         
         # Try to convert to float
         try:
             index_value = float(index_str)
         except ValueError as e:
             logger.error(f"無法轉換指數值為浮點數：'{index_str}' - {str(e)}")
-            return f"F11 錯誤: 數據格式異常 [TWSE]"
+            return f"F11 錯誤: 數據格式異常 [https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html]"
         
         logger.debug(f"成功轉換指數值: {index_value}")
         
@@ -241,7 +244,7 @@ def fetch_taiex_index() -> str:
         formatted_value = f"{index_value:.2f}"
         
         # Create the success output string
-        output = f"{date_str}  F11: 加權股價收盤指數 : {formatted_value} [TWSE]"
+        output = f"{date_str}  F11: 加權股價收盤指數 : {formatted_value} [https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html]"
         
         logger.info(f"成功提取指數值：{formatted_value}")
         logger.info(f"輸出: {output}")
@@ -256,7 +259,7 @@ def fetch_taiex_index() -> str:
         # Catch-all for all exceptions
         error_type = type(e).__name__
         logger.error(f"{error_type}：{str(e)}", exc_info=True)
-        return f"F11 錯誤: 系統異常 [TWSE]"
+        return f"F11 錯誤: 系統異常 [https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html]"
     
     finally:
         # Clean up WebDriver
@@ -294,7 +297,7 @@ def format_taiex_output(index_value: float, date: datetime = None) -> str:
     date_str = date.strftime("%Y.%m.%d")
     formatted_value = f"{index_value:.2f}"
     
-    return f"{date_str}  F11: 加權股價收盤指數 : {formatted_value} [TWSE]"
+    return f"{date_str}  F11: 加權股價收盤指數 : {formatted_value} [https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html]"
 
 
 # ============================================================================
@@ -325,9 +328,33 @@ def format_taiex_error(error_msg: str, include_timestamp: bool = False) -> str:
     
     if include_timestamp:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        return f"F11 錯誤: {error_msg} [TWSE] ({timestamp})"
+        return f"F11 錯誤: {error_msg} [https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html] ({timestamp})"
     else:
-        return f"F11 錯誤: {error_msg} [TWSE]"
+        return f"F11 錯誤: {error_msg} [https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html]"
+
+
+# ============================================================================
+# STANDARD INTERFACE: fetch(date) (run.py 兼容)
+# ============================================================================
+
+def fetch(date: str) -> str:
+    """
+    標準介面函數，供 run.py 調用
+
+    Args:
+        date (str): 查詢日期 (YYYY-MM-DD 格式)
+                   注意: F11 模組返回即時數據，不使用此日期參數
+
+    Returns:
+        str: 格式化的結果字串
+
+    Examples:
+        >>> result = fetch("2025-12-17")
+        >>> print(result)
+        2025.12.17  F11: 加權股價收盤指數 : 18254.50 [TWSE]
+    """
+    # F11 模組返回即時數據，忽略 date 參數
+    return fetch_taiex_index()
 
 
 # ============================================================================
@@ -342,29 +369,3 @@ if __name__ == "__main__":
     result = fetch_taiex_index()
     print(result)
     logger.info("測試完成")
-
-
-# ============================================================================
-# WRAPPER FUNCTION FOR run.py INTEGRATION
-# ============================================================================
-
-def fetch(query_date: str = None) -> str:
-    """
-    Wrapper function for run.py integration.
-    
-    This function provides compatibility with the run.py orchestration system.
-    
-    Args:
-        query_date (str, optional): The date to fetch data for (format: YYYY-MM-DD).
-                                   If not provided, uses today's date.
-    
-    Returns:
-        str: Formatted result string compatible with run.py expectations
-    
-    Note:
-        The TWSE website provides real-time data, so the query_date parameter
-        is not used in the actual data fetching. The function always returns
-        the latest available index value.
-    """
-    # Note: query_date is accepted but not used since TWSE provides real-time data
-    return fetch_taiex_index()

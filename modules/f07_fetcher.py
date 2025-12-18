@@ -21,12 +21,18 @@ from datetime import datetime
 # 設定 UTF-8 輸出（解決 Windows 終端亂碼，PyInstaller 已處理打包的情境）
 # 只在尚未包裝時才進行包裝，避免重複包裝導致 I/O 錯誤
 if sys.platform == 'win32' and not getattr(sys, "frozen", False):
-    if not hasattr(sys.stdout, '_wrapped_for_utf8'):
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-        sys.stdout._wrapped_for_utf8 = True
-    if not hasattr(sys.stderr, '_wrapped_for_utf8'):
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
-        sys.stderr._wrapped_for_utf8 = True
+    if not hasattr(sys.stdout, '_wrapped_for_utf8') and hasattr(sys.stdout, 'buffer'):
+        try:
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+            sys.stdout._wrapped_for_utf8 = True
+        except (AttributeError, ValueError):
+            pass
+    if not hasattr(sys.stderr, '_wrapped_for_utf8') and hasattr(sys.stderr, 'buffer'):
+        try:
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+            sys.stderr._wrapped_for_utf8 = True
+        except (AttributeError, ValueError):
+            pass
 
 # 模組識別
 MODULE_ID = "f07"
@@ -46,14 +52,14 @@ def format_f07_output(date: str, status: str, data: Optional[Dict] = None, error
     格式化 output v5.0
     """
     formatted_date = date.replace("-", ".")
-    
+
     if status == "success" and data:
         value = data.get("pcr", 0)
         # PCR 通常有小數點，且需加上 %
-        return f"{formatted_date}  F07: 臺指選擇權(TXO)買賣權未平倉量比率% : {value}% [TAIFEX]"
+        return f"{formatted_date}  F07: 臺指選擇權(TXO)買賣權未平倉量比率% : {value}% [https://www.taifex.com.tw/cht/3/pcRatio]"
     else:
         error_msg = error or "未知錯誤"
-        return f"{formatted_date}  F07 錯誤: {error_msg} [TAIFEX]"
+        return f"{formatted_date}  F07 錯誤: {error_msg} [https://www.taifex.com.tw/cht/3/pcRatio]"
 
 
 def fetch(date: str) -> str:
