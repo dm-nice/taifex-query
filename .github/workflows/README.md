@@ -7,9 +7,6 @@ Actions,預先封裝好的功能模組（例如：設定 Python 環境、登入 
 Runners,"執行工作流程的伺服器（GitHub 預設提供 Ubuntu, Windows, macOS）。"
 
 
-
-
-
 2. 如何設定（實作步驟）
 第一步：建立路徑
 在你的專案根目錄下，必須建立一個特殊的資料夾結構： .github/workflows/
