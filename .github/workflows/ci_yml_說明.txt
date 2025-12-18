@@ -1,0 +1,21 @@
+name: My First Action  # 工作流程名稱
+
+on:                   # 什麼時候觸發？
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:      # <--- 新增這一行，注意與 push 對齊
+
+jobs:                  # 要做什麼事？
+  build:
+    runs-on: ubuntu-latest  # 使用哪種伺服器執行
+
+    steps:             # 執行的步驟
+      - name: Checkout code  # 第一步：把程式碼下載到伺服器
+        uses: actions/checkout@v4
+
+      - name: Run a script   # 第二步：執行自定義指令
+        run: echo "Hello, GitHub Actions!"
+        
+        
