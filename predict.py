@@ -2,49 +2,41 @@ import json
 import os
 from datetime import datetime
 
-# 1. 數據目錄 (請確認此路徑下有 F01.txt, F17.txt 等檔案)
+# 1. 數據目錄
 DATA_DIR = r"C:\Taifex\data"
 
 def get_latest_factors():
     factors = {}
-    print("正在掃描目錄:", DATA_DIR)
-    try:
-        if not os.path.exists(DATA_DIR):
-            print("【錯誤】找不到數據目錄！")
-            return factors
-        
-        for filename in os.listdir(DATA_DIR):
-            if filename.endswith(".txt"):
-                factor_key = filename.split('.')[0]
-                with open(os.path.join(DATA_DIR, filename), 'r', encoding='utf-8') as f:
-                    val = f.read().strip().replace(',', '')
-                    factors[factor_key] = val
-        print("讀取到的因子清單:", list(factors.keys()))
-    except Exception as e:
-        print("讀取失敗:", e)
+    if not os.path.exists(DATA_DIR): return factors
+    for filename in os.listdir(DATA_DIR):
+        if filename.endswith(".txt"):
+            factor_key = filename.split('.')[0]
+            with open(os.path.join(DATA_DIR, filename), 'r', encoding='utf-8') as f:
+                val = f.read().strip().replace(',', '')
+                factors[factor_key] = val
     return factors
 
-def analyze_logic(factors):
-    # 根據您的截圖數據 F01 與 F17 進行邏輯判斷
+# 2. 自動判斷與評分邏輯
+def analyze(factors):
     f01 = float(factors.get('F01', 0))
     f17 = float(factors.get('F17', 0))
     
-    if f01 < -25000:
-        return "下跌", "85", "外資期貨空單水位極高，市場賣壓沉重。"
-    elif f01 > 5000:
-        return "上漲", "70", "外資期貨多單轉強，支撐力道增加。"
+    # 範例邏輯：若外資期貨空單 > 2.5萬口 且 現貨賣超
+    if f01 < -25000 and f17 < 0:
+        return "下跌", "-200 至 -350", "90", "外資期現貨同步偏空布局，空方力道強勁。"
+    elif f01 > 10000:
+        return "上漲", "+150 至 +250", "80", "外資多單回補，支撐轉強。"
     else:
-        return "盤整", "60", "籌碼指標中性，預期區間震盪。"
+        return "盤整", "-100 至 +100", "65", "籌碼面不明顯，預期區間震盪。"
 
-# 執行主流程
+# 3. 產出 JSON 並更新 README
 factors_data = get_latest_factors()
-res, conf, summary = analyze_logic(factors_data)
+res, rng, conf, summary = analyze(factors_data)
 
-# 建立預測 JSON 內容 (符合 輸出格式.md)
 prediction = {
     "數據日期": datetime.now().strftime('%Y/%m/%d'),
     "隔日預測結果": res,
-    "預測漲跌點數範圍": "-100 至 -250" if res == "下跌" else "+50 至 +150",
+    "預測漲跌點數範圍": rng,
     "信心分數": conf,
     "關鍵驅動因子": {
         "強度因子一": "F01(外資淨OI): " + factors_data.get('F01', '0') + " 口",
@@ -53,18 +45,12 @@ prediction = {
     "推理總結": summary
 }
 
-prediction_json = json.dumps(prediction, indent=4, ensure_ascii=False)
-
-# 寫入 README.md (改用字串相加，避開 f-string)
-header = "# 台指期預測系統 (TAIEX Prediction)\n"
-badge = "![My First Action](https://github.com/dm-nice/taifex-query/actions/workflows/ci.yml/badge.svg)\n\n"
-time_line = "## 最後自動更新時間: " + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "\n\n"
-json_block = "```json\n" + prediction_json + "\n```\n"
-
-full_readme = header + badge + time_line + json_block
+full_readme = "# 台指期預測系統 (TAIEX Prediction)\n" + \
+              "![My First Action](https://github.com/dm-nice/taifex-query/actions/workflows/ci.yml/badge.svg)\n\n" + \
+              "## 最後自動更新時間: " + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "\n\n" + \
+              "```json\n" + json.dumps(prediction, indent=4, ensure_ascii=False) + "\n```\n"
 
 with open("README.md", "w", encoding="utf-8") as f:
     f.write(full_readme)
 
-print("---")
-print("README.md 更新成功！")
+print("README.md 更新成功！數值已自動導入。")
