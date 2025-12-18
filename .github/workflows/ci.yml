@@ -1,5 +1,4 @@
-       
-        name: My First Action  # 工作流程名稱
+name: My First Action  # 工作流程名稱
 
 on:                   # 什麼時候觸發？
   push:
