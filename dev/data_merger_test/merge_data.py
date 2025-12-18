@@ -61,7 +61,8 @@ def merge_data_files():
         output_lines.append("")  # 空行
         output_lines.append("")  # 第二個空行
 
-        # 讀取並整合每個檔案
+        # 第一輪：讀取所有檔案內容
+        data_lines = []
         for txt_file in txt_files:
             print(f"  📄 處理: {txt_file.name}")
 
@@ -69,13 +70,41 @@ def merge_data_files():
                 # 讀取檔案內容
                 with open(txt_file, 'r', encoding='utf-8') as f:
                     content = f.read().strip()
-
-                # 添加資料內容
-                output_lines.append(content)
+                    data_lines.append(content)
 
             except Exception as e:
                 print(f"  ⚠️  警告: 讀取 {txt_file.name} 失敗: {e}")
-                output_lines.append(f"錯誤: 無法讀取檔案 {txt_file.name} - {e}")
+                data_lines.append(f"錯誤: 無法讀取檔案 {txt_file.name} - {e}")
+
+        # 第二輪：對齊 URL（在 '[https://' 之前）
+        import re
+
+        # 找出最長的非 URL 部分（即 '[https://' 之前的內容）
+        max_length = 0
+        for line in data_lines:
+            # 找到 '[https://' 或 '[http://' 的位置
+            match = re.search(r'\[https?://', line)
+            if match:
+                length = match.start()
+                max_length = max(max_length, length)
+
+        # 對齊所有行
+        for line in data_lines:
+            match = re.search(r'\[https?://', line)
+            if match:
+                # 分割為主要內容和 URL 部分
+                before_url = line[:match.start()]
+                from_url = line[match.start():]
+
+                # 計算需要填充的空格數
+                padding = max_length - len(before_url)
+
+                # 組合對齊後的行
+                aligned_line = before_url + ' ' * padding + from_url
+                output_lines.append(aligned_line)
+            else:
+                # 沒有 URL 的行（錯誤訊息等）直接加入
+                output_lines.append(line)
 
         # 寫入輸出檔案
         with open(output_file, 'w', encoding='utf-8') as f:
