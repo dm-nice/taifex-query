@@ -58,8 +58,7 @@ jobs:
       - name: Generate prediction dashboard
         run: |
           echo "Generating prediction dashboard..."
-          # TODO: 步驟2才會執行
-          # python predict_dashboard.py
+          python predict_dashboard.py
         continue-on-error: true
 
       - name: Commit and push changes
