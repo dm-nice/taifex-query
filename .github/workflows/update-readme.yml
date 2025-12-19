@@ -1,0 +1,28 @@
+name: Daily Update Data README
+
+on:
+  schedule:
+    - cron: "0 13 * * *"   # 每天 13:00 UTC = 台灣 21:00
+  workflow_dispatch:       # 允許手動執行
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: List .py files and update README.md
+        run: |
+          echo "## Python files in taifex/data" > taifex/data/README.md
+          ls taifex/data/*.py >> taifex/data/README.md
+          cat taifex/data/README.md
+
+      - name: Commit changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add taifex/data/README.md
+          git commit -m "Update taifex/data/README.md with .py files"
+          git push
