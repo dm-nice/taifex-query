@@ -1,0 +1,21 @@
+2025.12.19  F06: 臺指選擇權波動率指數              : 瀏覽器自動化異常  [https://mis.taifex.com.tw/futures/VolatilityQuotes] (2025-12-19 03:37:21, selenium_error=Message: session not created: Chrome instance exited. Examine ChromeDriver verbose log to determine the cause.; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#sessionnotcreatedexception
+Stacktrace:
+#0 0x55f105fca61a <unknown>
+#1 0x55f105a4720b <unknown>
+#2 0x55f105a8130d <unknown>
+#3 0x55f105a7ccc3 <unknown>
+#4 0x55f105acc85c <unknown>
+#5 0x55f105acbf7c <unknown>
+#6 0x55f105a8b232 <unknown>
+#7 0x55f105a8bee1 <unknown>
+#8 0x55f105f933f9 <unknown>
+#9 0x55f105f9634d <unknown>
+#10 0x55f105f7c122 <unknown>
+#11 0x55f105f96f2b <unknown>
+#12 0x55f105f62c30 <unknown>
+#13 0x55f105fb7d78 <unknown>
+#14 0x55f105fb7f4c <unknown>
+#15 0x55f105fc9973 <unknown>
+#16 0x7f8d1069caa4 <unknown>
+#17 0x7f8d10729c6c <unknown>
+)
