@@ -38,10 +38,21 @@ jobs:
         run: |
           echo "TODAY=$(TZ='Asia/Taipei' date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
+      - name: Debug - Check environment
+        run: |
+          echo "Current directory:"
+          pwd
+          echo "List files:"
+          ls -la
+          echo "Check modules directory:"
+          ls -la modules/ | head -10 || echo "modules/ not found"
+          echo "Check run.py:"
+          ls -la run.py || echo "run.py not found"
+
       - name: Run data collection - Night factors (F21-F25)
         run: |
           echo "Collecting night data for ${{ steps.date.outputs.TODAY }}"
-          python run.py ${{ steps.date.outputs.TODAY }}
+          python run.py ${{ steps.date.outputs.TODAY }} || echo "run.py failed with exit code $?"
         continue-on-error: true
 
       - name: Generate prediction dashboard
