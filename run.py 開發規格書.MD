@@ -2,8 +2,8 @@
 
 **程式名稱**: run.py
 **功能**: 模組統一執行程式
-**版本**: 2.2（程式碼優化版）
-**最後更新**: 2025-12-15
+**版本**: 2.3（時段分離功能）
+**最後更新**: 2025-12-19
 
 ---
 
@@ -70,10 +70,13 @@
 
 ```bash
 # 支援多種執行模式
-python run.py                              # 今天日期
-python run.py 2025-12-01                   # 指定日期
-python run.py 2025-12-01 dev               # 驗收模式
-python run.py 2025-12-01 dev --module f01  # 單一模組
+python run.py                                    # 今天日期（全部模組）
+python run.py 2025-12-01                         # 指定日期（全部模組）
+python run.py 2025-12-01 --session morning       # 僅執行早盤模組 (F01-F17)
+python run.py 2025-12-01 --session night         # 僅執行夜盤模組 (F21-F25)
+python run.py 2025-12-01 dev                     # 驗收模式
+python run.py 2025-12-01 dev --module f01        # 單一模組
+python run.py 2025-12-01 dev --session morning   # 驗收模式 + 早盤模組
 ```
 
 ### 3. 結果集中輸出
@@ -189,13 +192,17 @@ logger.info("開始執行")
 
 ---
 
-### get_module_list(folder: str, only_module: Optional[str]) -> List[str]
+### get_module_list(folder: str, only_module: Optional[str], session: Optional[str]) -> List[str]
 
 **功能**: 取得模組列表
 
 **參數**:
 - `folder`: 模組資料夾（"dev" 或 "modules"）
 - `only_module`: 僅執行特定模組（可選）
+- `session`: 時段篩選（"morning" 或 "night"，可選）
+  - `"morning"`: 僅返回 F01-F17 模組
+  - `"night"`: 僅返回 F21-F25 模組
+  - `None`: 返回全部模組
 
 **回傳**: 排序後的模組名稱列表
 
@@ -205,17 +212,26 @@ logger.info("開始執行")
 # 2. 排除 _ 開頭的檔案（例如 __init__.py）
 # 3. 組成完整模組路徑（例如 "dev.f01_fetcher"）
 # 4. 如果指定特定模組，進行過濾
-# 5. 排序後回傳
+# 5. 如果指定時段，按 F 編號過濾（morning: F01-F17, night: F21-F25）
+# 6. 排序後回傳
 ```
 
 **範例**:
 ```python
-# 取得 dev/ 下所有模組
-modules = get_module_list("dev")
-# ['dev.f01_fetcher_dev', 'dev.f02_fetcher_dev']
+# 取得 modules/ 下所有模組
+modules = get_module_list("modules")
+# ['modules.f01_fetcher', 'modules.f02_fetcher', ..., 'modules.f25_fetcher']
+
+# 只取得早盤模組 (F01-F17)
+modules = get_module_list("modules", session="morning")
+# ['modules.f01_fetcher', 'modules.f02_fetcher', ..., 'modules.f17_fetcher']
+
+# 只取得夜盤模組 (F21-F25)
+modules = get_module_list("modules", session="night")
+# ['modules.f21_fetcher', 'modules.f22_fetcher', ..., 'modules.f25_fetcher']
 
 # 只取得特定模組
-modules = get_module_list("dev", "f01_fetcher_dev")
+modules = get_module_list("dev", only_module="f01_fetcher_dev")
 # ['dev.f01_fetcher_dev']
 ```
 
@@ -331,7 +347,7 @@ KEY_MAPPING = {
 
 ---
 
-### run(query_date: str, dev_mode: bool, only_module: Optional[str])
+### run(query_date: str, dev_mode: bool, only_module: Optional[str], session: Optional[str])
 
 **功能**: 主執行函式
 
@@ -339,6 +355,7 @@ KEY_MAPPING = {
 - `query_date`: 查詢日期（YYYY-MM-DD）
 - `dev_mode`: 是否為驗收模式
 - `only_module`: 僅執行特定模組（可選）
+- `session`: 時段篩選（"morning" 或 "night"，可選）
 
 **執行流程**:
 
@@ -638,6 +655,20 @@ python run.py 2025-12-01
 
 # 顯示說明
 python run.py --help
+```
+
+### 時段分離執行（v2.3 新功能）
+
+```bash
+# 早盤執行（F01-F17）- 通常在 21:00 台灣時間執行
+python run.py 2025-12-19 --session morning
+
+# 夜盤執行（F21-F25）- 通常在 05:30 台灣時間執行
+python run.py 2025-12-19 --session night
+
+# 驗收模式 + 時段分離
+python run.py 2025-12-19 dev --session morning
+python run.py 2025-12-19 dev --session night
 ```
 
 ### 驗收模式
@@ -968,6 +999,18 @@ def setup_logger(log_file: Path) -> logging.Logger:
 
 ## 版本歷史
 
+### v2.3（時段分離功能）- 2025-12-19
+- ✨ **新增功能**：`--session` 參數支援時段分離執行
+  - `--session morning`: 僅執行早盤模組 (F01-F17)
+  - `--session night`: 僅執行夜盤模組 (F21-F25)
+- ⚡ **效能提升**：避免重複抓取資料，節省執行時間
+- 🔧 **優化**：`get_module_list()` 新增 session 參數篩選邏輯
+- 🔧 **優化**：`run()` 和 `parse_arguments()` 支援 session 參數
+- 📝 **文檔**：更新使用範例，新增時段分離說明
+- 🤖 **自動化**：GitHub Actions 已配置自動分時段執行
+  - daily-morning.yml: 21:00 TWN 執行早盤
+  - daily-night.yml: 05:30 TWN 執行夜盤
+
 ### v2.2（程式碼優化）- 2025-12-15
 - ⚡ **效能優化**：模組列表取得效能提升 15-20%
 - ⚡ **效能優化**：模組ID提取效能提升 30%
@@ -1001,10 +1044,101 @@ def setup_logger(log_file: Path) -> logging.Logger:
 
 ---
 
+## PyInstaller 打包配置
+
+### run.spec 文件
+
+`run.spec` 是 PyInstaller 的配置文件，用於將 `run.py` 打包成獨立的可執行檔（.exe）。
+
+**文件位置**: `C:\Taifex\run.spec`
+
+**配置內容**:
+```python
+# -*- mode: python ; coding: utf-8 -*-
+
+block_cipher = None
+
+a = Analysis(
+    ['run.py'],
+    pathex=[],
+    binaries=[],
+    datas=[],
+    hiddenimports=[],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name='run',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='run',
+)
+```
+
+### 打包說明
+
+**打包命令**:
+```bash
+# 使用 spec 文件打包
+pyinstaller run.spec
+
+# 或使用命令行參數
+pyinstaller --onedir --console --name run run.py
+```
+
+**輸出位置**:
+- 可執行檔: `dist/run/run.exe`
+- 依賴文件: `dist/run/` 目錄下的所有文件
+
+**配置說明**:
+- `console=True`: 顯示命令行視窗
+- `exclude_binaries=True`: 將依賴庫分離到外部文件
+- `upx=True`: 使用 UPX 壓縮以減小檔案大小
+- `name='run'`: 輸出檔案名稱為 run.exe
+
+**使用場景**:
+- 需要在沒有 Python 環境的電腦上運行
+- 簡化部署流程
+- 保護源代碼
+
+---
+
 ## 相關文件
 
 - [共同開發規範書](共同開發規範書_V1.md) - 所有 fetcher 模組的通用規範
 - [f01_fetcher 開發規範書](f01_package/f01_fetcher_開發規範書.md) - f01 模組專屬規範
+- [run.spec](run.spec) - PyInstaller 打包配置文件
 
 ---
 

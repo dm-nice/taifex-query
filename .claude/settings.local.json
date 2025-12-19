@@ -28,7 +28,11 @@
       "Bash(python merge_data.py:*)",
       "Bash(python -m pytest:*)",
       "Bash(timeout 120 python:*)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "Bash(test:*)",
+      "Bash(cmd /c \"dir /B C:\\\\Taifex\\\\dev\\\\data_merger_test\")",
+      "Bash(powershell -Command \"Get-ChildItem C:\\\\Taifex\\\\dev\\\\data_merger_test | Select-Object Name\")",
+      "Bash(powershell -Command:*)"
     ],
     "deny": [],
     "ask": []
