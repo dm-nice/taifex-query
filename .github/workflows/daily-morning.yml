@@ -52,7 +52,7 @@ jobs:
       - name: Run data collection - Morning factors (F01-F07, F11-F17)
         run: |
           echo "Collecting morning data for ${{ steps.date.outputs.TODAY }}"
-          python run.py ${{ steps.date.outputs.TODAY }} || echo "run.py failed with exit code $?"
+          python run.py ${{ steps.date.outputs.TODAY }} --session morning || echo "run.py failed with exit code $?"
         continue-on-error: true
 
       - name: Generate prediction dashboard
