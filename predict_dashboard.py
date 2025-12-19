@@ -157,13 +157,15 @@ def predict_opening(factors: Dict) -> Dict:
             "confidence": 4,  # 1-5 星
             "signals": ["夜盤 +217 點", "美股科技股強勢"],
             "risks": ["外資空單壓力 -28,731 口"],
-            "missing_factors": ["F25"]  # 缺失的因子
+            "missing_factors": ["F25"],  # 缺失的因子
+            "contributions": [("F25", 90), ("F22", 5), ("F01", 5)]  # 貢獻度排序
         }
     """
     score = 50  # 基準分數 (0-100)
     signals = []
     risks = []
     missing_factors = []
+    contributions = []  # (因子名稱, 權重百分比, 訊號文字)
 
     # F25 貢獻 (90%) - 台指期盤後
     if factors.get("F25", {}).get("status") == "success":
@@ -172,9 +174,13 @@ def predict_opening(factors: Dict) -> Dict:
         score += f25_change * 0.15  # 放大因子
 
         if f25_change > 0:
-            signals.append(f"夜盤收高 +{f25_change:.0f} 點，動能延續")
+            signal_text = f"夜盤收高 +{f25_change:.0f} 點，動能延續"
+            signals.append(signal_text)
+            contributions.append(("夜盤收盤", 90, signal_text))
         else:
-            risks.append(f"夜盤收低 {f25_change:.0f} 點，開盤承壓")
+            risk_text = f"夜盤收低 {f25_change:.0f} 點，開盤承壓"
+            risks.append(risk_text)
+            contributions.append(("夜盤收盤", 90, risk_text))
     else:
         missing_factors.append("F25")
         score -= 10  # 缺少關鍵因子，降低信心
@@ -184,19 +190,27 @@ def predict_opening(factors: Dict) -> Dict:
     score += us_score
 
     if us_score > 3:
-        signals.append(f"美股科技股強勢（費半 {factors.get('F22', {}).get('pct', 0):+.2f}%）")
+        signal_text = f"美股科技股強勢（費半 {factors.get('F22', {}).get('pct', 0):+.2f}%）"
+        signals.append(signal_text)
+        contributions.append(("美股市場", 5, signal_text))
     elif us_score < -3:
-        risks.append(f"美股科技股走弱（費半 {factors.get('F22', {}).get('pct', 0):+.2f}%）")
+        risk_text = f"美股科技股走弱（費半 {factors.get('F22', {}).get('pct', 0):+.2f}%）"
+        risks.append(risk_text)
+        contributions.append(("美股市場", 5, risk_text))
 
     # 籌碼壓力 (5%) - F01
     if factors.get("F01", {}).get("status") == "success":
         f01_value = factors["F01"]["value"]
         if f01_value < -25000:
             score -= 5
-            risks.append(f"外資空單壓力大 ({f01_value:,.0f} 口)")
+            risk_text = f"外資空單壓力大 ({f01_value:,.0f} 口)"
+            risks.append(risk_text)
+            contributions.append(("外資籌碼", 5, risk_text))
         elif f01_value > 25000:
             score += 5
-            signals.append(f"外資多單支撐 ({f01_value:,.0f} 口)")
+            signal_text = f"外資多單支撐 ({f01_value:,.0f} 口)"
+            signals.append(signal_text)
+            contributions.append(("外資籌碼", 5, signal_text))
     else:
         missing_factors.append("F01")
 
@@ -226,6 +240,9 @@ def predict_opening(factors: Dict) -> Dict:
     if missing_factors:
         confidence = max(1, confidence - len(missing_factors))
 
+    # 按權重排序貢獻度
+    contributions.sort(key=lambda x: x[1], reverse=True)
+
     return {
         "direction": direction,
         "range": range_points,
@@ -233,7 +250,8 @@ def predict_opening(factors: Dict) -> Dict:
         "signals": signals,
         "risks": risks,
         "missing_factors": missing_factors,
-        "score": score
+        "score": score,
+        "contributions": contributions
     }
 
 
@@ -277,29 +295,39 @@ def predict_intraday(factors: Dict) -> Dict:
             "key_level": 27700,  # 關鍵價位
             "confidence": 3,
             "signals": [...],
-            "risks": [...]
+            "risks": [...],
+            "contributions": [("F01", 35), ("F17", 35), ("F06", 10)]
         }
     """
     score = 50
     signals = []
     risks = []
     missing_factors = []
+    contributions = []  # (因子名稱, 權重百分比, 訊號文字)
 
     # F01: 外資未平倉淨額 (35%)
     if factors.get("F01", {}).get("status") == "success":
         f01_value = factors["F01"]["value"]
         if f01_value > 30000:
             score += 15
-            signals.append(f"外資大量做多 ({f01_value:,.0f} 口)")
+            signal_text = f"外資大量做多 ({f01_value:,.0f} 口)"
+            signals.append(signal_text)
+            contributions.append(("外資未平倉", 35, signal_text))
         elif f01_value > 10000:
             score += 8
-            signals.append(f"外資偏多 ({f01_value:,.0f} 口)")
+            signal_text = f"外資偏多 ({f01_value:,.0f} 口)"
+            signals.append(signal_text)
+            contributions.append(("外資未平倉", 35, signal_text))
         elif f01_value < -30000:
             score -= 15
-            risks.append(f"外資大量做空 ({f01_value:,.0f} 口)")
+            risk_text = f"外資大量做空 ({f01_value:,.0f} 口)"
+            risks.append(risk_text)
+            contributions.append(("外資未平倉", 35, risk_text))
         elif f01_value < -10000:
             score -= 8
-            risks.append(f"外資偏空 ({f01_value:,.0f} 口)")
+            risk_text = f"外資偏空 ({f01_value:,.0f} 口)"
+            risks.append(risk_text)
+            contributions.append(("外資未平倉", 35, risk_text))
     else:
         missing_factors.append("F01")
 
@@ -308,16 +336,24 @@ def predict_intraday(factors: Dict) -> Dict:
         f17_value = factors["F17"]["value"]
         if f17_value > 100:
             score += 15
-            signals.append(f"外資現貨大買 ({f17_value:,.0f} 億)")
+            signal_text = f"外資現貨大買 ({f17_value:,.0f} 億)"
+            signals.append(signal_text)
+            contributions.append(("外資買超", 35, signal_text))
         elif f17_value > 30:
             score += 8
-            signals.append(f"外資現貨買超 ({f17_value:,.0f} 億)")
+            signal_text = f"外資現貨買超 ({f17_value:,.0f} 億)"
+            signals.append(signal_text)
+            contributions.append(("外資買超", 35, signal_text))
         elif f17_value < -100:
             score -= 15
-            risks.append(f"外資現貨大賣 ({f17_value:,.0f} 億)")
+            risk_text = f"外資現貨大賣 ({f17_value:,.0f} 億)"
+            risks.append(risk_text)
+            contributions.append(("外資買超", 35, risk_text))
         elif f17_value < -30:
             score -= 8
-            risks.append(f"外資現貨賣超 ({f17_value:,.0f} 億)")
+            risk_text = f"外資現貨賣超 ({f17_value:,.0f} 億)"
+            risks.append(risk_text)
+            contributions.append(("外資買超", 35, risk_text))
     else:
         missing_factors.append("F17")
 
@@ -326,10 +362,14 @@ def predict_intraday(factors: Dict) -> Dict:
         vix = factors["F06"]["value"]
         if vix > 25:
             score -= 5
-            risks.append(f"VIX 高檔 {vix:.2f}，市場不安")
+            risk_text = f"VIX 高檔 {vix:.2f}，市場不安"
+            risks.append(risk_text)
+            contributions.append(("VIX波動率", 10, risk_text))
         elif vix < 15:
             score += 3
-            signals.append(f"VIX 低檔 {vix:.2f}，市場穩定")
+            signal_text = f"VIX 低檔 {vix:.2f}，市場穩定"
+            signals.append(signal_text)
+            contributions.append(("VIX波動率", 10, signal_text))
 
     # F04: 前日收盤價，計算關鍵價位
     key_level = 27700  # 預設值
@@ -357,6 +397,9 @@ def predict_intraday(factors: Dict) -> Dict:
     if missing_factors:
         confidence = max(1, confidence - len(missing_factors))
 
+    # 按權重排序貢獻度
+    contributions.sort(key=lambda x: x[1], reverse=True)
+
     return {
         "trend": trend,
         "key_level": key_level,
@@ -364,7 +407,8 @@ def predict_intraday(factors: Dict) -> Dict:
         "signals": signals,
         "risks": risks,
         "missing_factors": missing_factors,
-        "score": score
+        "score": score,
+        "contributions": contributions
     }
 
 
@@ -419,21 +463,37 @@ def generate_readme(factors: Dict, opening_pred: Dict, intraday_pred: Dict) -> s
 ✅ **多方因素**:
 """
 
-    # 添加多方訊號
-    all_signals = opening_pred["signals"] + intraday_pred["signals"]
-    if all_signals:
-        for signal in all_signals[:5]:  # 最多顯示 5 個
-            readme += f"- {signal}\n"
+    # 合併開盤和盤中的貢獻度，並按權重排序（只保留多方）
+    all_contributions = opening_pred.get("contributions", []) + intraday_pred.get("contributions", [])
+
+    # 分離多方和空方因素
+    bullish_contributions = []
+    bearish_contributions = []
+
+    for name, weight, text in all_contributions:
+        # 判斷是多方還是空方（根據文字內容）
+        if any(keyword in text for keyword in ["收高", "強勢", "做多", "買", "支撐", "穩定", "偏多"]):
+            bullish_contributions.append((name, weight, text))
+        else:
+            bearish_contributions.append((name, weight, text))
+
+    # 按權重排序，取前3名
+    bullish_contributions.sort(key=lambda x: x[1], reverse=True)
+    bearish_contributions.sort(key=lambda x: x[1], reverse=True)
+
+    # 添加多方訊號（帶百分比）
+    if bullish_contributions:
+        for name, weight, text in bullish_contributions[:3]:  # 只顯示前3名
+            readme += f"- {text} 【{weight}%】\n"
     else:
         readme += "- （暫無明顯多方訊號）\n"
 
     readme += "\n⚠️ **空方風險**:\n"
 
-    # 添加風險因素
-    all_risks = opening_pred["risks"] + intraday_pred["risks"]
-    if all_risks:
-        for risk in all_risks[:5]:  # 最多顯示 5 個
-            readme += f"- {risk}\n"
+    # 添加風險因素（帶百分比）
+    if bearish_contributions:
+        for name, weight, text in bearish_contributions[:3]:  # 只顯示前3名
+            readme += f"- {text} 【{weight}%】\n"
     else:
         readme += "- （暫無明顯風險因素）\n"
 
