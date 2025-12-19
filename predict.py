@@ -1,95 +1,88 @@
 import json
 import os
+import re
 from datetime import datetime
 
-# 1. 數據與歷史檔案路徑
+# 1. 路徑設定
 BASE_DIR = r"C:\Taifex"
 DATA_DIR = os.path.join(BASE_DIR, "data")
-HISTORY_FILE = os.path.join(BASE_DIR, "history.json")
+README_FILE = os.path.join(BASE_DIR, "README.md")
 
-def get_latest_factors():
-    factors = {}
-    if not os.path.exists(DATA_DIR): return factors
-    for filename in os.listdir(DATA_DIR):
-        if filename.endswith(".txt"):
-            factor_key = filename.split('.')[0]
-            with open(os.path.join(DATA_DIR, filename), 'r', encoding='utf-8') as f:
-                val = f.read().strip().replace(',', '').replace('%', '')
-                factors[factor_key] = val
-    return factors
+def get_stock_details(text):
+    """強化版解析：提取 (絕對點位, 漲跌點數, 漲跌百分比)"""
+    text = str(text).replace(',', '').strip()
+    pct_matches = re.findall(r"([-+]?\d*\.\d+|\d+)%", text)
+    pct = float(pct_matches[-1]) if pct_matches else 0.0
+    clean_text = re.sub(r'https?://\S+', '', text)
+    num_matches = re.findall(r"([-+]?\d*\.\d+|\d+)", clean_text)
+    val = float(num_matches[0]) if len(num_matches) > 0 else 0.0
+    diff = float(num_matches[1]) if len(num_matches) > 1 else 0.0
+    return val, diff, pct
 
-def calculate_logic(factors):
-    # 讀取當前數值
-    f11_now = float(factors.get('F11', 0)) # 加權指數
-    f14_now = float(factors.get('F14', 0)) # 台積電
-    f01 = float(factors.get('F01', 0))    # 外資淨OI
-    
-    # 讀取歷史紀錄
-    history = {"win_count": 0, "total_count": 0, "last_prediction": "", "last_f11": 0, "last_f14": 0}
-    if os.path.exists(HISTORY_FILE):
-        with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
-            history.update(json.load(f))
+def load_data():
+    data = {}
+    if not os.path.exists(DATA_DIR): return data, 0
+    files = [f for f in os.listdir(DATA_DIR) if f.endswith(".txt")]
+    for filename in files:
+        tag_match = re.search(r'F\d{2}', filename.upper())
+        if tag_match:
+            key = tag_match.group()
+            try:
+                with open(os.path.join(DATA_DIR, filename), 'r', encoding='utf-8') as f:
+                    data[key] = f.read().strip()
+            except: data[key] = "0"
+    return data, len(files)
 
-    # --- A. 勝率計算 ---
-    if history["last_prediction"] and history["last_f11"] > 0:
-        actual_move = "上漲" if f11_now > history["last_f11"] else "下跌"
-        history["total_count"] += 1
-        if actual_move == history["last_prediction"]:
-            history["win_count"] += 1
-    
-    win_rate = (history["win_count"] / history["total_count"] * 100) if history["total_count"] > 0 else 0
+# --- 核心執行流程 ---
+raw_data, total_factors = load_data()
 
-    # --- B. 技術面斜率評分 ---
-    score = 50
-    reasons = []
-    
-    # 台積電斜率判斷 (F14)
-    if history["last_f14"] > 0:
-        slope = f14_now - history["last_f14"]
-        if slope > 5:
-            score += 15; reasons.append(f"台積電斜率向上(+{slope})")
-        elif slope < -5:
-            score -= 15; reasons.append(f"台積電斜率向下({slope})")
+# 2. 解析關鍵指標 (依據你的因子配置)
+f01_oi, _, _ = get_stock_details(raw_data.get('F01', '0'))      # 外資淨OI: -28731
+_, f25_diff, f25_pct = get_stock_details(raw_data.get('F25', '0')) # 夜盤漲跌: +217
+_, _, f24_pct = get_stock_details(raw_data.get('F24', '0'))      # ADR漲跌: +2.79%
+f17_val, _, _ = get_stock_details(raw_data.get('F17', '0'))      # 外資買超: -270.05
 
-    # 籌碼面權重 (F01)
-    if f01 < -25000: score -= 20; reasons.append("期貨空單壓力")
+# --- 3. 雙時間預測邏輯 ---
 
-    # 判定最終結果
-    res = "上漲" if score > 55 else ("下跌" if score < 45 else "盤整")
-    
-    # 更新歷史紀錄
-    history.update({
-        "last_prediction": res,
-        "last_f11": f11_now,
-        "last_f14": f14_now
-    })
-    with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
-        json.dump(history, f, indent=4)
+# A. 08:45 預測 (夜盤位階 90% + 籌碼 5% + 其他 5%)
+# 將點數轉化為得分，+217點是非常強勢的表現
+score_0845 = 50 + (f25_diff * 0.4 * 0.9) + (f01_oi / 1000 * 0.05) + (5 if f24_pct > 0 else -5)
+res_0845 = "強勢高開" if f25_diff > 150 else ("看漲" if score_0845 > 55 else "盤整")
 
-    return res, f"{win_rate:.1f}%", " | ".join(reasons) if reasons else "指標中性"
+# B. 09:00 預測 (法人籌碼 70% + 技術/其他 30%)
+# 以 F01 (-28731) 為核心壓制力
+score_0900 = 50 + (f01_oi / 500 * 0.7) + (f25_diff / 10 * 0.3)
+res_0900 = "高檔震盪(防拉回)" if (f01_oi < -25000 and f25_diff > 100) else ("看漲" if score_0900 > 55 else "偏空")
 
-# 執行並更新 README
-factors = get_latest_factors()
-res, win_rate_str, summary = calculate_logic(factors)
-
-prediction = {
-    "數據日期": datetime.now().strftime('%Y/%m/%d'),
-    "隔日預測結果": res,
-    "系統歷史勝率": win_rate_str,
-    "關鍵驅動因子": {
-        "技術面因子": "F11(大盤): " + factors.get('F11', '0') + " / F14(台積電): " + factors.get('F14', '0'),
-        "籌碼面因子": "F01(外資淨OI): " + factors.get('F01', '0')
+# 4. 封裝 JSON
+result = {
+    "更新時間": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+    "因子總數": f"{total_factors} 項",
+    "數據偵測": {
+        "ADR漲跌": f"{f24_pct:+.2f}%",
+        "夜盤位階": f"{f25_diff:+.0f}",
+        "外資淨OI": f"{int(f01_oi)}口"
     },
-    "推理總結": summary
+    "預測結果": {
+        "0845_開盤階段": res_0845,
+        "0900_盤中走勢": res_0900
+    },
+    "分析總結": f"開盤由夜盤帶動{f25_diff:+.0f}點 | 盤中留意法人空單{int(f01_oi)}口壓力"
 }
 
-# 寫入 README.md
-full_content = "# 台指期預測系統 (TAIEX Prediction)\n" + \
-               "![My First Action](https://github.com/dm-nice/taifex-query/actions/workflows/ci.yml/badge.svg)\n\n" + \
-               "## 最後自動更新時間: " + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "\n\n" + \
-               "```json\n" + json.dumps(prediction, indent=4, ensure_ascii=False) + "\n```\n"
+# 5. 寫入 README
+CB = "```" 
+json_string = json.dumps(result, indent=4, ensure_ascii=False)
+readme_content = f"""# 台指期預測系統
+![Action](https://github.com/dm-nice/taifex-query/actions/workflows/ci.yml/badge.svg)
 
-with open(os.path.join(BASE_DIR, "README.md"), "w", encoding="utf-8") as f:
-    f.write(full_content)
+## 雙階段動態分析 (依據 {total_factors} 項因子)
 
-print(f"系統已更新。歷史檔案路徑: {HISTORY_FILE}")
+{CB}json
+{json_string}
+{CB}
+"""
+with open(README_FILE, "w", encoding="utf-8") as f:
+    f.write(readme_content)
+
+print(f"✅ 雙時間預測 README 更新完成！")
