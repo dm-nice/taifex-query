@@ -1,0 +1,69 @@
+name: Daily Night Data Collection (05:30 TWN)
+
+on:
+  schedule:
+    # 台灣時間 05:30 = UTC 21:30 (前一天)
+    - cron: '30 21 * * *'
+  workflow_dispatch:  # 允許手動觸發
+
+jobs:
+  collect-night-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Chrome and ChromeDriver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+      - name: Get current date (Asia/Taipei)
+        id: date
+        run: |
+          echo "TODAY=$(TZ='Asia/Taipei' date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Run data collection - Night factors (F21-F25)
+        run: |
+          echo "Collecting night data for ${{ steps.date.outputs.TODAY }}"
+          python run.py ${{ steps.date.outputs.TODAY }}
+        continue-on-error: true
+
+      - name: Generate prediction dashboard
+        run: |
+          echo "Generating prediction dashboard..."
+          # TODO: 步驟2才會執行
+          # python predict_dashboard.py
+        continue-on-error: true
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add data/
+          git add README.md || true
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🌙 Night data update: ${{ steps.date.outputs.TODAY }}" && git push)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload data artifacts (optional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: night-data-${{ steps.date.outputs.TODAY }}
+          path: data/
+          retention-days: 7

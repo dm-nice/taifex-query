@@ -6,6 +6,15 @@ Steps,Job 內部的細節步驟，會按順序執行指令或 Action。
 Actions,預先封裝好的功能模組（例如：設定 Python 環境、登入 Docker）。
 Runners,"執行工作流程的伺服器（GitHub 預設提供 Ubuntu, Windows, macOS）。"
 
+c:\Taifex\
+├── .github/
+│   └── workflows/
+│       ├── daily-morning.yml    ✅ 早盤工作流程 (21:00)
+│       └── daily-night.yml      ✅ 夜盤工作流程 (05:30)
+├── requirements.txt             ✅ Python 依賴套件
+├── GITHUB_SETUP.md              ✅ 設定指南
+└── test_workflow_local.bat      ✅ 本地測試腳本
+
 
 2. 如何設定（實作步驟）
 第一步：建立路徑
