@@ -10,11 +10,13 @@
 - 提供詳細的執行日誌
 
 【使用方式】
-  python run.py [日期] [模式] [--module 模組名稱]
+  python run.py [日期] [模式] [--module 模組名稱] [--session 時段]
 
 【範例】
-  python run.py                              # 執行今天
-  python run.py 2025-12-01                   # 執行指定日期
+  python run.py                              # 執行今天（全部模組）
+  python run.py 2025-12-01                   # 執行指定日期（全部模組）
+  python run.py 2025-12-01 --session morning   # 僅執行早盤模組 (F01-F17)
+  python run.py 2025-12-01 --session night     # 僅執行夜盤模組 (F21-F25)
   python run.py 2025-12-01 dev               # 驗收模式
   python run.py 2025-12-01 dev --module f01_fetcher_dev
   python run.py --help                       # 顯示說明
@@ -130,13 +132,17 @@ def setup_logger(log_file: Path) -> logging.Logger:
     return logger
 
 
-def get_module_list(folder: str, only_module: Optional[str] = None) -> List[str]:
+def get_module_list(folder: str, only_module: Optional[str] = None, session: Optional[str] = None) -> List[str]:
     """
     取得模組列表
 
     Args:
         folder: 模組資料夾 ('dev' 或 'modules')
         only_module: 僅執行特定模組
+        session: 時段篩選 ('morning' 或 'night')
+            - 'morning': F01-F17 (早盤資料)
+            - 'night': F21-F25 (夜盤資料)
+            - None: 全部模組
 
     Returns:
         排序後的模組名稱列表
@@ -154,8 +160,25 @@ def get_module_list(folder: str, only_module: Optional[str] = None) -> List[str]
 
         modules = [f"{folder}.{f}" for f in files]
 
+        # 如果指定特定模組，只執行該模組
         if only_module:
             modules = [m for m in modules if m.endswith(only_module)]
+
+        # 如果指定時段，篩選對應的模組
+        elif session:
+            if session == "morning":
+                # 早盤: F01-F17
+                morning_patterns = [
+                    f"f{i:02d}_fetcher" for i in range(1, 18)
+                ]
+                modules = [m for m in modules if any(p in m for p in morning_patterns)]
+
+            elif session == "night":
+                # 夜盤: F21-F25
+                night_patterns = [
+                    f"f{i:02d}_fetcher" for i in range(21, 26)
+                ]
+                modules = [m for m in modules if any(p in m for p in night_patterns)]
 
         return sorted(modules)
 
@@ -385,14 +408,15 @@ def print_summary(result: str, status: str, logger: logging.Logger):
     logger.info(f"  📄 輸出: {result}")
 
 
-def run(query_date: str, dev_mode: bool = False, only_module: Optional[str] = None):
+def run(query_date: str, dev_mode: bool = False, only_module: Optional[str] = None, session: Optional[str] = None):
     """
     主執行函式
-    
+
     Args:
         query_date: 查詢日期 (YYYY-MM-DD)
         dev_mode: 是否為驗收模式
         only_module: 僅執行特定模組
+        session: 時段篩選 ('morning' 或 'night')
     """
     # 建立輸出目錄
     BASE_DIR.mkdir(parents=True, exist_ok=True)
@@ -429,11 +453,14 @@ def run(query_date: str, dev_mode: bool = False, only_module: Optional[str] = No
     logger.info(f"  🔧 執行模式: {mode}")
     if only_module:
         logger.info(f"  🎯 指定模組: {only_module}")
+    if session:
+        session_name = "早盤 (F01-F17)" if session == "morning" else "夜盤 (F21-F25)"
+        logger.info(f"  🕐 執行時段: {session_name}")
     logger.info("=" * 70)
     logger.info("")
-    
+
     # 取得模組列表
-    modules = get_module_list(folder, only_module)
+    modules = get_module_list(folder, only_module, session)
     
     if not modules:
         logger.warning(f"⚠️  在 '{folder}/' 資料夾中找不到任何模組")
@@ -496,12 +523,12 @@ def print_usage():
     print(__doc__)
 
 
-def parse_arguments() -> Tuple[str, bool, Optional[str]]:
+def parse_arguments() -> Tuple[str, bool, Optional[str], Optional[str]]:
     """
     解析命令列參數
 
     Returns:
-        (查詢日期, 驗收模式, 指定模組)
+        (查詢日期, 驗收模式, 指定模組, 時段)
     """
     args = sys.argv[1:]
 
@@ -527,6 +554,21 @@ def parse_arguments() -> Tuple[str, bool, Optional[str]]:
             print_usage()
             sys.exit(1)
 
+    # 解析時段
+    session = None
+    if "--session" in args:
+        idx = args.index("--session")
+        if idx + 1 < len(args):
+            session = args[idx + 1]
+            if session not in ["morning", "night"]:
+                print(f"❌ 錯誤: --session 參數只接受 'morning' 或 'night'，但收到 '{session}'\n")
+                print_usage()
+                sys.exit(1)
+        else:
+            print("❌ 錯誤: --session 參數後需要指定時段 (morning 或 night)\n")
+            print_usage()
+            sys.exit(1)
+
     # 驗證日期格式
     if not validate_date(query_date):
         print(f"❌ 錯誤: 日期格式不正確 '{query_date}'")
@@ -534,7 +576,7 @@ def parse_arguments() -> Tuple[str, bool, Optional[str]]:
         print_usage()
         sys.exit(1)
 
-    return query_date, dev_mode, only_module
+    return query_date, dev_mode, only_module, session
 
 
 def main():
@@ -546,11 +588,11 @@ def main():
         sys.stdout._wrapped_for_utf8 = True
 
     # 解析參數
-    query_date, dev_mode, only_module = parse_arguments()
+    query_date, dev_mode, only_module, session = parse_arguments()
 
     # 執行
     try:
-        run(query_date, dev_mode, only_module)
+        run(query_date, dev_mode, only_module, session)
     except KeyboardInterrupt:
         print("\n\n⚠️  執行被使用者中斷 (Ctrl+C)")
         sys.exit(130)

@@ -1,0 +1,29 @@
+# 台灣期貨 20 因子預測系統 - 整合資料
+# 整合時間: 2025-12-19 06:38:13
+# 資料來源: c:\Taifex\data
+# 檔案數量: 19
+#======================================================================
+
+早盤資料
+2025.12.18  F01: 台指期貨外資 [未平倉] [多空淨額] : -28,731 口            [https://www.taifex.com.tw/cht/3/futContractsDate]
+2025.12.18  F02: 台指期貨外資 [未平倉] [多方] : 16,867 口               [https://www.taifex.com.tw/cht/3/futContractsDate]
+2025.12.18  F03: 台指期貨外資 [未平倉] [空方] : 45,598 口               [https://www.taifex.com.tw/cht/3/futContractsDate]
+2025.12.18  F04: 台指期貨當日收盤價 (Day N Close) : 27,591.0         [https://www.taifex.com.tw/cht/3/futDailyMarketReport]
+2025.12.18  F05: 台指期貨選擇權總成交量            : 712,272 口         [https://www.taifex.com.tw/cht/3/optDailyMarketReport]
+2025.12.18  F06: 臺指選擇權波動率指數              : 21.90            [https://mis.taifex.com.tw/futures/VolatilityQuotes]
+2025.12.18  F07: 臺指選擇權(TXO)買賣權未平倉量比率% : 80.95%              [https://www.taifex.com.tw/cht/3/pcRatio]
+
+2025.12.18  F11: 加權股價收盤指數 : 27468.53                        [https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html]
+2025.12.18  F12: 台股每日成交金額 : 4,600.36                        [https://www.twse.com.tw/rwd/zh/afterTrading/FMTQIK]
+2025.12.18  F13: 台灣加權股價指數與 20 日均線距離 : 152.75 點              [https://www.twse.com.tw/zh/page/trading/exchange/MI_INDEX.html]
+2025.12.18  F14: 台積電當日收盤價 : 1,430.00                        [https://www.twse.com.tw/zh/trading/historical/stock-day.html]
+2025.12.18  F15: 台積電當日漲跌價差 : 0 元                            [https://www.twse.com.tw/zh/trading/historical/stock-day.html]
+2025.12.18  F16: 台積電當日成交股數 : 33,103 張                       [https://www.twse.com.tw/zh/trading/historical/stock-day.html]
+2025.12.18  F17: 台灣股票外資及陸資買賣差額 : -270.05 億元                 [https://www.twse.com.tw/fund/BFI82U]
+
+夜盤資料
+2025.12.19  F21: NASDAQ指數 : 23,006.36 (漲跌 +313.04, +1.38%)       [https://www.wantgoo.com/global]
+2025.12.19  F22: 費城半導體指數 : 6,863.60 (漲跌 +168.30, +2.51%)    [https://www.wantgoo.com/global]
+2025.12.19  F23: EM-ND期指數 : 24,976.00 (漲跌 +307.25, +1.25%)     [https://www.wantgoo.com/global]
+2025.12.19  F24: 台積電ADR : 284.68 (漲跌 +7.72, +2.79%)            [https://www.wantgoo.com/global]
+2025.12.19  F25: 台指期盤後 : 27,815.00 (漲跌 +217.00, +0.79%)       [https://www.wantgoo.com/global]
