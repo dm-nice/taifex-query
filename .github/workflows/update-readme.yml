@@ -16,7 +16,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: List .py files and update README.md
+      - name: List .py files and update list_py.md
         run: |
           mkdir -p taifex/data
           echo "## Python files in taifex/data" > taifex/data/README.md
