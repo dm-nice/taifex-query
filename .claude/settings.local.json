@@ -32,7 +32,11 @@
       "Bash(test:*)",
       "Bash(cmd /c \"dir /B C:\\\\Taifex\\\\dev\\\\data_merger_test\")",
       "Bash(powershell -Command \"Get-ChildItem C:\\\\Taifex\\\\dev\\\\data_merger_test | Select-Object Name\")",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(powershell -Command \"Get-ChildItem C:\\\\Taifex\\\\modules\\\\f2*.py | Select-Object Name\")",
+      "Bash(Get-ChildItem C:Taifexdata*f11*.txt)",
+      "Bash(Select-Object Name, LastWriteTime)",
+      "Bash(python predict_dashboard.py:*)"
     ],
     "deny": [],
     "ask": []

@@ -111,20 +111,23 @@ def parse_factor_data(text: str, factor_code: str) -> Dict:
 
     # 格式 A: 簡單數值（F01-F17 早盤資料）
     # 範例: "2025.12.18  F01: 台指期貨外資 [未平倉] [多空淨額] : -28,731 口"
+    # 範例: "2025.12.19  F11: 加權股價指數收盤 : 27,696.35  [https://...]"
     else:
         try:
-            # 找最後一個冒號後的數值
-            parts = text.split(':')
+            # 找最後一個冒號後的數值（但在 URL 之前）
+            # 先移除 URL 部分
+            text_without_url = re.sub(r'\[https?://[^\]]*\]', '', text)
+
+            parts = text_without_url.split(':')
             if len(parts) < 2:
                 return {"status": "failed", "error": "無法找到數值", "raw": text}
 
             # 取最後一部分，移除單位（口、元、張等）
             value_part = parts[-1].strip()
-            value_part = re.sub(r'\[.*?\]', '', value_part)  # 移除 URL
             value_part = value_part.split()[0]  # 取第一個數字部分
 
-            # 移除逗號並轉換
-            value_str = value_part.replace(',', '')
+            # 移除逗號、百分比符號並轉換
+            value_str = value_part.replace(',', '').replace('%', '')
             value = float(value_str)
 
             return {
@@ -443,7 +446,10 @@ def generate_readme(factors: Dict, opening_pred: Dict, intraday_pred: Dict) -> s
 
     readme = f"""# 台指期預測系統
 
-## 🎯 開盤預測分析
+*最後更新: {update_time} ({data_type})*
+*本儀表板僅供參考，不構成投資建議*
+
+## 🎯 台股指數近日 開盤預測分析
 
 ### 📊 市場訊號燈
 {signal_lights}
@@ -565,10 +571,6 @@ def generate_readme(factors: Dict, opening_pred: Dict, intraday_pred: Dict) -> s
     readme += f"""
 ### 📌 數據品質
 ✅ 成功: {success_factors}/{total_factors} 因子 | ⚠️ 失敗: {len(failed_factors)} {f'({", ".join(failed_factors)})' if failed_factors else ''}
-
----
-*最後更新: {update_time} ({data_type})*
-*本儀表板僅供參考，不構成投資建議*
 """
 
     return readme

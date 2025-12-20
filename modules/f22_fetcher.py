@@ -15,7 +15,6 @@ f22_openspec_dev.py
 import sys
 import io
 import logging
-import time
 from typing import Dict, Optional
 from datetime import datetime
 
@@ -210,18 +209,16 @@ def fetch(date: str) -> str:
         logger.info(f"[F22] {date} 訪問頁面: {SOURCE}")
         driver.get(SOURCE)
 
-        # 等待頁面加載（JavaScript 動態內容）
+        # 等待頁面加載（JavaScript 動態內容）- 使用動態等待
         logger.debug(f"[F22] {date} 等待頁面加載...")
-        time.sleep(8)  # 等待 AJAX 完成
-
-        # 嘗試等待表格出現
         try:
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.TAG_NAME, "table"))
+            # 直接等待包含費半的行出現（最多等待 15 秒）
+            WebDriverWait(driver, 15).until(
+                EC.presence_of_element_located((By.XPATH, "//tr[contains(., '費城半導體') or contains(., 'SOX')]"))
             )
-            logger.debug(f"[F22] {date} 表格已載入")
+            logger.debug(f"[F22] {date} 費半資料已載入")
         except:
-            logger.warning(f"[F22] {date} 未檢測到表格")
+            logger.warning(f"[F22] {date} 等待費半資料逾時，嘗試繼續執行")
 
         # 提取 費城半導體 數據
         result_dict = extract_phlx_data(driver, date)

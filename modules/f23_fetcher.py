@@ -15,7 +15,6 @@ EM-ND 指數夜盤資料抓取模組
 import sys
 import io
 import logging
-import time
 from typing import Dict, Optional
 from datetime import datetime
 
@@ -210,18 +209,16 @@ def fetch(date: str) -> str:
         logger.info(f"[F23] {date} 訪問頁面: {SOURCE}")
         driver.get(SOURCE)
 
-        # 等待頁面加載（JavaScript 動態內容）
+        # 等待頁面加載（JavaScript 動態內容）- 使用動態等待
         logger.debug(f"[F23] {date} 等待頁面加載...")
-        time.sleep(8)  # 等待 AJAX 完成
-
-        # 嘗試等待表格出現
         try:
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.TAG_NAME, "table"))
+            # 直接等待包含 EM-ND 的行出現（最多等待 15 秒）
+            WebDriverWait(driver, 15).until(
+                EC.presence_of_element_located((By.XPATH, "//tr[contains(., 'EM-ND') or contains(., '小那')]"))
             )
-            logger.debug(f"[F23] {date} 表格已載入")
+            logger.debug(f"[F23] {date} EM-ND 資料已載入")
         except:
-            logger.warning(f"[F23] {date} 未檢測到表格")
+            logger.warning(f"[F23] {date} 等待 EM-ND 資料逾時，嘗試繼續執行")
 
         # 提取 EM-ND 數據
         result_dict = extract_emnd_data(driver, date)

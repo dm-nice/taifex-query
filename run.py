@@ -79,7 +79,9 @@ class SafeConsoleHandler(logging.Handler):
                 '⏰ 執行時間:',       # 執行時間
                 '🔧 執行模式:',       # 執行模式
                 '🎯 指定模組:',       # 指定模組
+                '🕐 執行時段:',       # 執行時段
                 # '📦 找到',          # 找到模組數量（移除，不顯示）
+                '⚙️  執行中:',        # 模組執行進度
                 '📊 執行統計',        # 執行統計標題
                 '總數:',              # 統計資訊
                 '✅ 成功:',           # 成功數量
@@ -475,7 +477,11 @@ def run(query_date: str, dev_mode: bool = False, only_module: Optional[str] = No
     # 執行各模組
     for idx, module_name in enumerate(modules, 1):
         logger.info(f"[{idx}/{len(modules)}] " + "─" * 50)
-        
+
+        # 顯示執行進度（會在螢幕顯示）
+        module_short = module_name.split(".")[-1].upper()
+        logger.info(f"⚙️  執行中: {module_short} ........")
+
         # 執行模組
         result, status = execute_module(module_name, query_date, logger)
         stats[status] = stats.get(status, 0) + 1
