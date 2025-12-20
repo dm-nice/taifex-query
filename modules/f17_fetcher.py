@@ -64,7 +64,7 @@ def format_f17_output(
     if status == "success" and data:
         diff = data.get("difference")
         source = data.get("source", SOURCE)
-        return f"{formatted_date}  F17: 台灣股票外資及陸資買賣差額 : {diff} 億元 [{source}]"
+        return f"{formatted_date}  F17: 外資買賣超 : {diff} 億元 [{source}]"
 
     error_msg = error or "未知錯誤"
     return f"{formatted_date}  F17 錯誤: {error_msg} [{SOURCE}]"

@@ -570,7 +570,9 @@ def generate_readme(factors: Dict, opening_pred: Dict, intraday_pred: Dict) -> s
             name = get_factor_name(code)
             value = f.get("value", 0)
             interpretation = interpret_value(code, value)
-            readme += f"| {code} {name} | {value:,.0f} | {interpretation} |\n"
+            # F17 是億元，保留2位小數；其他是口數，無小數
+            fmt = "{:,.2f}" if code == "F17" else "{:,.0f}"
+            readme += f"| {code} {name} | {fmt.format(value)} | {interpretation} |\n"
         else:
             name = get_factor_name(code)
             readme += f"| {code} {name} | - | ❌ 資料缺失 |\n"
