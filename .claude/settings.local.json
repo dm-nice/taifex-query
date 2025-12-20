@@ -36,7 +36,8 @@
       "Bash(powershell -Command \"Get-ChildItem C:\\\\Taifex\\\\modules\\\\f2*.py | Select-Object Name\")",
       "Bash(Get-ChildItem C:Taifexdata*f11*.txt)",
       "Bash(Select-Object Name, LastWriteTime)",
-      "Bash(python predict_dashboard.py:*)"
+      "Bash(python predict_dashboard.py:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
