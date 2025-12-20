@@ -11,20 +11,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check if trading day
+        id: check_day
+        run: |
+          # 取得台北時間的星期幾 (1=週一, 7=週日)
+          DAY_OF_WEEK=$(TZ='Asia/Taipei' date +%u)
+          echo "DAY_OF_WEEK=$DAY_OF_WEEK"
+          # 週五夜盤後是週六凌晨，週日夜盤也要跳過
+          # 只在週一到週五執行 (1-5)
+          if [ "$DAY_OF_WEEK" -ge 1 ] && [ "$DAY_OF_WEEK" -le 5 ]; then
+            echo "is_trading_day=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_trading_day=false" >> $GITHUB_OUTPUT
+            echo "⏭️  Weekend detected, skipping data collection"
+          fi
+
       - name: Checkout repository
+        if: steps.check_day.outputs.is_trading_day == 'true'
         uses: actions/checkout@v4
 
       - name: Set up Python
+        if: steps.check_day.outputs.is_trading_day == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install dependencies
+        if: steps.check_day.outputs.is_trading_day == 'true'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Install Chrome and ChromeDriver
+        if: steps.check_day.outputs.is_trading_day == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip
@@ -34,11 +53,13 @@ jobs:
           sudo apt-get install -y google-chrome-stable
 
       - name: Get current date (Asia/Taipei)
+        if: steps.check_day.outputs.is_trading_day == 'true'
         id: date
         run: |
           echo "TODAY=$(TZ='Asia/Taipei' date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
       - name: Debug - Check environment
+        if: steps.check_day.outputs.is_trading_day == 'true'
         run: |
           echo "Current directory:"
           pwd
@@ -50,18 +71,21 @@ jobs:
           ls -la run.py || echo "run.py not found"
 
       - name: Run data collection - Night factors (F21-F25)
+        if: steps.check_day.outputs.is_trading_day == 'true'
         run: |
           echo "Collecting night data for ${{ steps.date.outputs.TODAY }}"
           python run.py ${{ steps.date.outputs.TODAY }} --session night || echo "run.py failed with exit code $?"
         continue-on-error: true
 
       - name: Generate prediction dashboard
+        if: steps.check_day.outputs.is_trading_day == 'true'
         run: |
           echo "Generating prediction dashboard..."
           python predict_dashboard.py
         continue-on-error: true
 
       - name: Commit and push changes
+        if: steps.check_day.outputs.is_trading_day == 'true'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
@@ -72,6 +96,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload data artifacts (optional)
+        if: steps.check_day.outputs.is_trading_day == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: night-data-${{ steps.date.outputs.TODAY }}
