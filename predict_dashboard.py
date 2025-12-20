@@ -444,12 +444,37 @@ def generate_readme(factors: Dict, opening_pred: Dict, intraday_pred: Dict) -> s
     has_night_data = factors.get("F25", {}).get("status") == "success"
     data_type = "早盤+夜盤數據" if has_night_data else "早盤數據"
 
+    # 計算交易日
+    from datetime import timedelta
+    today = datetime.now()
+    # 取得資料中的日期（從 F04 或其他因子）
+    data_date_str = factors.get("F04", {}).get("date", today.strftime("%Y.%m.%d"))
+    data_date = datetime.strptime(data_date_str, "%Y.%m.%d")
+
+    # 預測的是下一個交易日
+    next_trading_day = data_date + timedelta(days=1)
+    # 如果是週六，往後推2天
+    if next_trading_day.weekday() == 5:  # Saturday
+        next_trading_day += timedelta(days=2)
+    # 如果是週日，往後推1天
+    elif next_trading_day.weekday() == 6:  # Sunday
+        next_trading_day += timedelta(days=1)
+
+    next_next_trading_day = next_trading_day + timedelta(days=1)
+    # 處理下下個交易日的週末
+    if next_next_trading_day.weekday() == 5:
+        next_next_trading_day += timedelta(days=2)
+    elif next_next_trading_day.weekday() == 6:
+        next_next_trading_day += timedelta(days=1)
+
     readme = f"""# 台指期預測系統
 
 *最後更新: {update_time} ({data_type})*
 *本儀表板僅供參考，不構成投資建議*
 
 ## 🎯 台股指數近日 開盤預測分析
+相關資料　交易日(day N  ): {data_date.strftime("%Y.%m.%d")}
+預測下一個交易日(day N+1): {next_trading_day.strftime("%Y.%m.%d")}
 
 ### 📊 市場訊號燈
 {signal_lights}
