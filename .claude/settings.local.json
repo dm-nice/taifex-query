@@ -37,7 +37,9 @@
       "Bash(Get-ChildItem C:Taifexdata*f11*.txt)",
       "Bash(Select-Object Name, LastWriteTime)",
       "Bash(python predict_dashboard.py:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
