@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(powershell \"Get-ChildItem -Path ([Environment]::GetFolderPath(''ApplicationData'') + ''\\Code\\User\\globalStorage'') -Directory | Where-Object {$_Name -like ''*anthropic*'' -or $_Name -like ''*claude*''} | Select-Object -ExpandProperty FullName\")",
+      "Bash(powershell:*)",
       "Bash(ls:*)",
       "Bash(dir /B *.md)",
       "Bash(python run.py:*)",
@@ -34,12 +34,13 @@
       "Bash(powershell -Command \"Get-ChildItem C:\\\\Taifex\\\\dev\\\\data_merger_test | Select-Object Name\")",
       "Bash(powershell -Command:*)",
       "Bash(powershell -Command \"Get-ChildItem C:\\\\Taifex\\\\modules\\\\f2*.py | Select-Object Name\")",
-      "Bash(Get-ChildItem C:Taifexdata*f11*.txt)",
+      "Bash(Get-ChildItem C:Taifexdata:*)",
       "Bash(Select-Object Name, LastWriteTime)",
       "Bash(python predict_dashboard.py:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(python -m json.tool:*)"
     ],
     "deny": [],
     "ask": []
