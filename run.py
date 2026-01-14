@@ -30,9 +30,10 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple, Any
+from dataclasses import dataclass
+from enum import Enum
 
-# ===== 設定 =====
-# 自動取得專案根目錄
+# ===== 專案路徑設定 =====
 if getattr(sys, "frozen", False):
     base_dir = Path(sys.executable).resolve().parent
 else:
@@ -44,66 +45,142 @@ elif (base_dir.parent / "modules").exists():
     PROJECT_ROOT = base_dir.parent
 else:
     PROJECT_ROOT = base_dir
+
 BASE_DIR = PROJECT_ROOT / "data"
 LOG_FORMAT = "%(asctime)s [%(levelname)s] %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
-# 模組快取（減少重複載入）
+# 快取已載入的模組以提升效能（避免重複 import 造成的開銷）
 MODULE_CACHE = {}
 
-# 狀態對應的圖示
-STATUS_ICONS = {
-    "success": "✅",
-    "failed": "⚠️ ",
-    "error": "❌",
-    "invalid": "⛔"
-}
+# 台灣期貨市場分為早盤(09:00-13:45)和夜盤(15:00-05:00)兩個交易時段
+MORNING_MODULES = range(1, 18)    # F01-F17 早盤模組
+NIGHT_MODULES = range(21, 26)     # F21-F25 夜盤模組
+
+
+class ModuleStatus(Enum):
+    """模組執行狀態"""
+    SUCCESS = "success"
+    FAILED = "failed"
+    ERROR = "error"
+    INVALID = "invalid"
+    
+    @property
+    def icon(self) -> str:
+        """取得對應圖示"""
+        icons = {
+            self.SUCCESS: "✅",
+            self.FAILED: "⚠️ ",
+            self.ERROR: "❌",
+            self.INVALID: "⛔"
+        }
+        return icons[self]
+    
+    @property
+    def chinese_name(self) -> str:
+        """取得中文名稱"""
+        names = {
+            self.SUCCESS: "成功",
+            self.FAILED: "失敗",
+            self.ERROR: "錯誤",
+            self.INVALID: "無效"
+        }
+        return names[self]
+
+
+@dataclass
+class ExecutionContext:
+    """執行上下文資料"""
+    query_date: str
+    dev_mode: bool
+    only_module: Optional[str]
+    session: Optional[str]
+    folder: str
+    mode: str
+    exec_day: str
+    exec_time: str
+    exec_time_short: str
+    log_file: Path
+
+
+@dataclass
+class ExecutionStats:
+    """執行統計資料"""
+    success: int = 0
+    failed: int = 0
+    error: int = 0
+    invalid: int = 0
+    total: int = 0
+    
+    def increment(self, status: str):
+        """增加指定狀態的計數"""
+        if hasattr(self, status):
+            setattr(self, status, getattr(self, status) + 1)
+    
+    def get_percentages(self) -> Dict[str, float]:
+        """計算各狀態的百分比"""
+        if self.total == 0:
+            return {'success': 0, 'failed': 0, 'error': 0, 'invalid': 0}
+        
+        return {
+            'success': self.success / self.total * 100,
+            'failed': self.failed / self.total * 100,
+            'error': self.error / self.total * 100,
+            'invalid': self.invalid / self.total * 100
+        }
 
 
 class SafeConsoleHandler(logging.Handler):
     """安全的 Console Handler - 避免因 stdout 被關閉而出錯"""
-
+    
+    def __init__(self):
+        super().__init__()
+        self._last_msg = ''
+        self._show_patterns = self._get_display_patterns()
+    
+    def _get_display_patterns(self) -> List[str]:
+        """定義需要顯示的訊息模式"""
+        return [
+            '═════',              # 標題分隔線
+            '📅 查詢日期:',       # 查詢日期
+            '⏰ 執行時間:',       # 執行時間
+            '🔧 執行模式:',       # 執行模式
+            '🎯 指定模組:',       # 指定模組
+            '🕐 執行時段:',       # 執行時段
+            '⚙️  執行中:',        # 模組執行進度
+            '📊 執行統計',        # 執行統計標題
+            '總數:',              # 統計資訊
+            '✅ 成功:',           # 成功數量
+            '⚠️  失敗:',         # 失敗數量
+            '❌ 錯誤:',           # 錯誤數量
+            '⛔ 無效:',           # 無效數量
+            '📝 詳細日誌:',       # 日誌位置
+            '⚠️  在'              # 警告訊息
+        ]
+    
+    def _should_display(self, msg: str) -> bool:
+        """判斷訊息是否應該顯示"""
+        # 避免顯示詳細日誌訊息，只保留使用者關心的摘要資訊
+        if any(level in msg for level in ['[INFO]', '[ERROR]', '[WARNING]', '[DEBUG]']):
+            return False
+        
+        if any(pattern in msg for pattern in self._show_patterns):
+            return True
+        
+        if msg.strip() == '' and '═' in self._last_msg:
+            return True
+        
+        return False
+    
     def emit(self, record):
         try:
             msg = self.format(record)
-
-            # 跳過包含時間戳記的訊息（格式：YYYY-MM-DD HH:MM:SS [INFO]）
-            if '[INFO]' in msg or '[ERROR]' in msg or '[WARNING]' in msg or '[DEBUG]' in msg:
-                return
-
-            # 只在螢幕顯示重要的摘要資訊
-            # 允許顯示的模式：開頭標題區塊 + 最後統計區塊
-            show_patterns = [
-                '═════',              # 標題分隔線
-                '📅 查詢日期:',       # 查詢日期
-                '⏰ 執行時間:',       # 執行時間
-                '🔧 執行模式:',       # 執行模式
-                '🎯 指定模組:',       # 指定模組
-                '🕐 執行時段:',       # 執行時段
-                # '📦 找到',          # 找到模組數量（移除，不顯示）
-                '⚙️  執行中:',        # 模組執行進度
-                '📊 執行統計',        # 執行統計標題
-                '總數:',              # 統計資訊
-                '✅ 成功:',           # 成功數量
-                '⚠️  失敗:',         # 失敗數量（注意兩個空格）
-                '❌ 錯誤:',           # 錯誤數量
-                '⛔ 無效:',           # 無效數量
-                '📝 詳細日誌:',       # 日誌位置
-                '⚠️  在'              # 警告訊息（找不到模組）
-            ]
-
-            # 檢查是否需要顯示
-            if any(pattern in msg for pattern in show_patterns):
+            
+            if self._should_display(msg):
                 print(msg)
-            # 只在標題區塊顯示空行
-            elif msg.strip() == '' and '═' in getattr(self, '_last_msg', ''):
-                print(msg)
-
-            # 記錄最後一條訊息（用於判斷空行）
+            
             self._last_msg = msg
-
         except Exception:
-            # 靜默處理錯誤，避免中斷執行
             pass
 
 
@@ -112,29 +189,57 @@ def setup_logger(log_file: Path) -> logging.Logger:
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     logger.handlers.clear()
-
-    # 禁用向上傳播，避免日誌被 root logger 的 handler 重複輸出
     logger.propagate = False
-
-    # 檔案 handler - 詳細記錄（UTF-8 編碼）
+    
     file_handler = logging.FileHandler(log_file, encoding='utf-8', mode='a')
     file_handler.setLevel(logging.DEBUG)
     file_formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
     file_handler.setFormatter(file_formatter)
-
-    # 終端機 handler - 使用安全的 Console Handler
+    
     console_handler = SafeConsoleHandler()
     console_handler.setLevel(logging.INFO)
     console_formatter = logging.Formatter('%(message)s')
     console_handler.setFormatter(console_formatter)
-
+    
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
-
+    
     return logger
 
 
-def get_module_list(folder: str, only_module: Optional[str] = None, session: Optional[str] = None) -> List[str]:
+def _scan_python_modules(folder_path: Path, folder: str) -> List[str]:
+    """掃描資料夾中的 Python 模組"""
+    files = [
+        f.stem for f in folder_path.glob("*.py")
+        if not f.name.startswith("_")
+    ]
+    return [f"{folder}.{file}" for file in files]
+
+
+def _filter_by_module_name(modules: List[str], only_module: Optional[str]) -> List[str]:
+    """根據指定模組名稱過濾"""
+    if only_module:
+        return [module for module in modules if module.endswith(only_module)]
+    return modules
+
+
+def _filter_by_session(modules: List[str], session: Optional[str]) -> List[str]:
+    """根據時段過濾模組"""
+    if not session:
+        return modules
+    
+    if session == "morning":
+        patterns = [f"f{num:02d}_fetcher" for num in MORNING_MODULES]
+    elif session == "night":
+        patterns = [f"f{num:02d}_fetcher" for num in NIGHT_MODULES]
+    else:
+        return modules
+    
+    return [module for module in modules if any(pattern in module for pattern in patterns)]
+
+
+def get_module_list(folder: str, only_module: Optional[str] = None, 
+                    session: Optional[str] = None) -> List[str]:
     """
     取得模組列表
 
@@ -153,39 +258,15 @@ def get_module_list(folder: str, only_module: Optional[str] = None, session: Opt
         folder_path = PROJECT_ROOT / folder
         if not folder_path.exists():
             return []
-
-        # 取得所有 Python 模組（排除 __init__.py 等）
-        files = [
-            f.stem for f in folder_path.glob("*.py")
-            if not f.name.startswith("_")
-        ]
-
-        modules = [f"{folder}.{f}" for f in files]
-
-        # 如果指定特定模組，只執行該模組
-        if only_module:
-            modules = [m for m in modules if m.endswith(only_module)]
-
-        # 如果指定時段，篩選對應的模組
-        elif session:
-            if session == "morning":
-                # 早盤: F01-F17
-                morning_patterns = [
-                    f"f{i:02d}_fetcher" for i in range(1, 18)
-                ]
-                modules = [m for m in modules if any(p in m for p in morning_patterns)]
-
-            elif session == "night":
-                # 夜盤: F21-F25
-                night_patterns = [
-                    f"f{i:02d}_fetcher" for i in range(21, 26)
-                ]
-                modules = [m for m in modules if any(p in m for p in night_patterns)]
-
+        
+        modules = _scan_python_modules(folder_path, folder)
+        modules = _filter_by_module_name(modules, only_module)
+        modules = _filter_by_session(modules, session)
+        
         return sorted(modules)
-
-    except Exception as e:
-        print(f"⚠️  讀取模組列表失敗: {e}")
+    
+    except Exception as error:
+        print(f"⚠️  讀取模組列表失敗: {error}")
         return []
 
 
@@ -199,14 +280,13 @@ def extract_module_id(module_name: str) -> str:
     Returns:
         例如 "F01", "F02"
     """
-    # 提取模組代號（字母+數字組合）
-    for i, char in enumerate(module_name):
+    # 從左到右掃描，找到第一組連續的字母+數字組合（如 "f01"、"F25"）
+    for index, char in enumerate(module_name):
         if char.isdigit():
-            # 找到數字後繼續找到非數字為止
-            j = i + 1
-            while j < len(module_name) and module_name[j].isdigit():
-                j += 1
-            return module_name[:j].upper()
+            end_index = index + 1
+            while end_index < len(module_name) and module_name[end_index].isdigit():
+                end_index += 1
+            return module_name[:end_index].upper()
     return module_name.upper()[:3]
 
 
@@ -234,13 +314,49 @@ def convert_dict_to_text(result_dict: Dict, module_name: str, query_date: str) -
             text = f"[ {date_formatted}  {module_id}{summary}   source: {source} ]"
         else:
             data = result_dict.get("data", {})
-            data_str = ", ".join(f"{k}: {v}" for k, v in data.items())
+            data_str = ", ".join(f"{key}: {value}" for key, value in data.items())
             text = f"[ {date_formatted}  {module_id} {data_str}   source: {source} ]"
     else:
         error_msg = result_dict.get("error", "未知錯誤")
         text = f"[ {date_formatted}  {module_id} 錯誤: {error_msg}   source: {source} ]"
 
     return text
+
+
+def _validate_string_format(result: str, module_id: str, 
+                           date_formatted: str) -> Tuple[str, str]:
+    """驗證字串格式的返回值"""
+    # 舊格式：[ YYYY.MM.DD  FXX...   source: XXX ]
+    if result.startswith("[") and result.endswith("]"):
+        if date_formatted in result and module_id in result:
+            status = "failed" if "錯誤:" in result else "success"
+            return result, status
+    
+    # 新格式：FXX: ... [source] 或帶日期的格式
+    elif result.startswith(module_id + ":") or (
+        date_formatted in result and 
+        (f"{module_id}:" in result or f"{module_id} 錯誤:" in result)
+    ):
+        status = "failed" if "錯誤:" in result else "success"
+        return result, status
+    
+    error_text = f"[ {date_formatted}  {module_id} 錯誤: 模組回傳格式錯誤   source: UNKNOWN ]"
+    return error_text, "invalid"
+
+
+def _validate_dict_format(result: dict, module_short: str, 
+                         query_date: str) -> Tuple[str, str]:
+    """驗證 dict 格式的返回值（舊版相容）"""
+    converted_text = convert_dict_to_text(result, module_short, query_date)
+    status = result.get("status", "error")
+    return converted_text, status
+
+
+def _create_invalid_format_error(module_id: str, 
+                                date_formatted: str) -> Tuple[str, str]:
+    """建立無效格式錯誤訊息"""
+    error_text = f"[ {date_formatted}  {module_id} 錯誤: 返回格式錯誤   source: UNKNOWN ]"
+    return error_text, "invalid"
 
 
 def validate_text_format(result: Any, module_name: str, query_date: str) -> Tuple[str, str]:
@@ -259,39 +375,12 @@ def validate_text_format(result: Any, module_name: str, query_date: str) -> Tupl
     module_id = extract_module_id(module_short)
     date_formatted = query_date.replace("-", ".")
 
-    # 1. 字串格式（新模組）
     if isinstance(result, str):
-        # 接受兩種格式：
-        # 舊格式：[ YYYY.MM.DD  FXX...   source: XXX ]
-        # 新格式：FXX: ... [source]
-        if result.startswith("[") and result.endswith("]"):
-            # 舊格式驗證
-            if date_formatted in result and module_id in result:
-                status = "failed" if "錯誤:" in result else "success"
-                return result, status
-        elif result.startswith(module_id + ":") or (
-            date_formatted in result and (f"{module_id}:" in result or f"{module_id} 錯誤:" in result)
-        ):
-            # 新格式驗證（包含帶日期的格式）
-            status = "failed" if "錯誤:" in result else "success"
-            return result, status
-
-        # 格式不正確 - 需要傳入 logger 或移除 logger 調用
-        # 暫時移除 logger 調用以避免錯誤
-        text = f"[ {date_formatted}  {module_id} 錯誤: 模組回傳格式錯誤   source: UNKNOWN ]"
-        return text, "invalid"
-
-    # 2. dict 格式（舊模組，向後兼容）
+        return _validate_string_format(result, module_id, date_formatted)
     elif isinstance(result, dict):
-        # 移除 logger 調用以避免錯誤
-        return convert_dict_to_text(result, module_short, query_date), \
-               result.get("status", "error")
-
-    # 3. 無效類型
+        return _validate_dict_format(result, module_short, query_date)
     else:
-        # 移除 logger 調用以避免錯誤
-        text = f"[ {date_formatted}  {module_id} 錯誤: 返回格式錯誤   source: UNKNOWN ]"
-        return text, "invalid"
+        return _create_invalid_format_error(module_id, date_formatted)
 
 
 def save_result(result: str, module_name: str, exec_day: str, dev_mode: bool) -> Path:
@@ -311,7 +400,6 @@ def save_result(result: str, module_name: str, exec_day: str, dev_mode: bool) ->
     module_short = module_name.split(".")[-1]
     current_time = datetime.now().strftime("%H%M")
 
-    # 檔案名稱格式: YYYY-MM-DD_HHMM_模組名稱.txt
     data_file = BASE_DIR / f"{exec_day}_{current_time}_{module_short}{suffix}.txt"
     data_file.write_text(result, encoding="utf-8")
 
@@ -335,14 +423,12 @@ def execute_module(module_name: str, query_date: str, logger: logging.Logger) ->
     try:
         logger.info(f"執行模組: {module_name}")
 
-        # 從快取或動態載入模組
         if module_name not in MODULE_CACHE:
             MODULE_CACHE[module_name] = importlib.import_module(module_name)
 
-        mod = MODULE_CACHE[module_name]
+        loaded_module = MODULE_CACHE[module_name]
 
-        # 檢查是否有 fetch 函式
-        if not hasattr(mod, 'fetch'):
+        if not hasattr(loaded_module, 'fetch'):
             module_id = extract_module_id(module_short)
             date_formatted = query_date.replace("-", ".")
             error_text = f"[ {date_formatted}  {module_id} 錯誤: 模組缺少 fetch() 函式   source: UNKNOWN ]"
@@ -352,34 +438,30 @@ def execute_module(module_name: str, query_date: str, logger: logging.Logger) ->
         root_logger = logging.getLogger()
         original_handlers = root_logger.handlers[:]
 
-        # 移除所有 console handlers
         for handler in original_handlers:
             if isinstance(handler, (logging.StreamHandler, SafeConsoleHandler)):
                 root_logger.removeHandler(handler)
 
         try:
-            # 執行 fetch 函式
-            result = mod.fetch(query_date)
+            result = loaded_module.fetch(query_date)
         finally:
-            # 恢復 root logger 的 handlers
             for handler in original_handlers:
                 if handler not in root_logger.handlers:
                     root_logger.addHandler(handler)
 
-        # 驗證並正規化
         validated_text, status = validate_text_format(result, module_name, query_date)
 
         return validated_text, status
 
-    except ImportError as e:
-        logger.error(f"模組載入失敗: {e}")
+    except ImportError as error:
+        logger.error(f"模組載入失敗: {error}")
         module_id = extract_module_id(module_short)
         date_formatted = query_date.replace("-", ".")
         error_text = f"[ {date_formatted}  {module_id} 錯誤: 無法載入模組   source: UNKNOWN ]"
         return error_text, "error"
 
-    except Exception as e:
-        logger.error(f"執行異常: {str(e)}")
+    except Exception as error:
+        logger.error(f"執行異常: {str(error)}")
         logger.error(traceback.format_exc())
 
         module_id = extract_module_id(module_short)
@@ -397,20 +479,148 @@ def print_summary(result: str, status: str, logger: logging.Logger):
         status: 狀態碼
         logger: 日誌記錄器
     """
-    icon = STATUS_ICONS.get(status, "❓")
+    try:
+        module_status = ModuleStatus(status)
+        icon = module_status.icon
+        status_name = module_status.chinese_name
+    except ValueError:
+        icon = "❓"
+        status_name = status
 
-    status_zh = {
-        "success": "成功",
-        "failed": "失敗",
-        "error": "錯誤",
-        "invalid": "無效"
-    }
-
-    logger.info(f"  {icon} 狀態: {status_zh.get(status, status)}")
+    logger.info(f"  {icon} 狀態: {status_name}")
     logger.info(f"  📄 輸出: {result}")
 
 
-def run(query_date: str, dev_mode: bool = False, only_module: Optional[str] = None, session: Optional[str] = None):
+def _setup_environment():
+    """設定執行環境"""
+    BASE_DIR.mkdir(parents=True, exist_ok=True)
+    if str(PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0, str(PROJECT_ROOT))
+
+
+def _create_execution_context(query_date: str, dev_mode: bool,
+                              only_module: Optional[str],
+                              session: Optional[str]) -> ExecutionContext:
+    """建立執行上下文資訊"""
+    folder = "dev" if dev_mode else "modules"
+    mode = "驗收模式" if dev_mode else "正式模式"
+    exec_day = datetime.now().strftime("%Y-%m-%d")
+    exec_time = datetime.now().strftime(DATE_FORMAT)
+    exec_time_short = datetime.now().strftime("%H%M")
+    
+    log_suffix = '_dev' if dev_mode else ''
+    log_file = BASE_DIR / f"{exec_day}_{exec_time_short}_run{log_suffix}.log"
+    
+    return ExecutionContext(
+        query_date=query_date,
+        dev_mode=dev_mode,
+        only_module=only_module,
+        session=session,
+        folder=folder,
+        mode=mode,
+        exec_day=exec_day,
+        exec_time=exec_time,
+        exec_time_short=exec_time_short,
+        log_file=log_file
+    )
+
+
+def _print_execution_header(logger: logging.Logger, context: ExecutionContext):
+    """顯示執行標題資訊"""
+    logger.info("")
+    logger.info("=" * 70)
+    logger.info(f"  📅 查詢日期: {context.query_date}")
+    logger.info(f"  ⏰ 執行時間: {context.exec_time}")
+    logger.info(f"  🔧 執行模式: {context.mode}")
+    
+    if context.only_module:
+        logger.info(f"  🎯 指定模組: {context.only_module}")
+    if context.session:
+        session_name = "早盤 (F01-F17)" if context.session == "morning" else "夜盤 (F21-F25)"
+        logger.info(f"  🕐 執行時段: {session_name}")
+    
+    logger.info("=" * 70)
+    logger.info("")
+
+
+def _get_and_validate_modules(logger: logging.Logger, context: ExecutionContext) -> List[str]:
+    """取得並驗證模組列表"""
+    modules = get_module_list(context.folder, context.only_module, context.session)
+    
+    if not modules:
+        logger.warning(f"⚠️  在 '{context.folder}/' 資料夾中找不到任何模組")
+        if context.only_module:
+            logger.warning(f"    指定的模組 '{context.only_module}' 不存在")
+        return []
+    
+    logger.info(f"📦 找到 {len(modules)} 個模組")
+    logger.info("")
+    return modules
+
+
+def _execute_single_module(logger: logging.Logger, module_name: str,
+                           current: int, total: int, context: ExecutionContext, 
+                           stats: ExecutionStats):
+    """執行單一模組並更新統計"""
+    logger.info(f"[{current}/{total}] " + "─" * 50)
+    
+    module_short = module_name.split(".")[-1].upper()
+    logger.info(f"⚙️  執行中: {module_short} ........")
+    
+    result, status = execute_module(module_name, context.query_date, logger)
+    
+    # 驗證狀態值
+    valid_statuses = {s.value for s in ModuleStatus}
+    if status not in valid_statuses:
+        logger.warning(f"未知的狀態碼: {status}，設定為 'error'")
+        status = ModuleStatus.ERROR.value
+    
+    stats.increment(status)
+    
+    try:
+        data_file = save_result(result, module_name, context.exec_day, context.dev_mode)
+        logger.info(f"💾 檔案: {data_file.name}")
+        print_summary(result, status, logger)
+    except Exception as error:
+        logger.error(f"❌ 儲存失敗: {error}")
+        stats.increment("error")
+    
+    logger.info("")
+
+
+def _execute_all_modules(logger: logging.Logger, modules: List[str], 
+                        context: ExecutionContext) -> ExecutionStats:
+    """執行所有模組並收集統計資料"""
+    stats = ExecutionStats(total=len(modules))
+    
+    for idx, module_name in enumerate(modules, 1):
+        _execute_single_module(logger, module_name, idx, len(modules), context, stats)
+    
+    return stats
+
+
+def _print_execution_summary(logger: logging.Logger, stats: ExecutionStats, 
+                            context: ExecutionContext):
+    """顯示執行統計報告"""
+    logger.info("=" * 70)
+    logger.info("  📊 執行統計")
+    logger.info("=" * 70)
+    logger.info(f"  總數: {stats.total}")
+    
+    percentages = stats.get_percentages()
+    
+    logger.info(f"  ✅ 成功: {stats.success} ({percentages['success']:.1f}%)")
+    logger.info(f"  ⚠️  失敗: {stats.failed} ({percentages['failed']:.1f}%)")
+    logger.info(f"  ❌ 錯誤: {stats.error} ({percentages['error']:.1f}%)")
+    logger.info(f"  ⛔ 無效: {stats.invalid} ({percentages['invalid']:.1f}%)")
+    logger.info("=" * 70)
+    logger.info(f"📝 詳細日誌: {context.log_file}")
+    logger.info("=" * 70)
+    logger.info("")
+
+
+def run(query_date: str, dev_mode: bool = False, only_module: Optional[str] = None, 
+        session: Optional[str] = None):
     """
     主執行函式
 
@@ -420,99 +630,20 @@ def run(query_date: str, dev_mode: bool = False, only_module: Optional[str] = No
         only_module: 僅執行特定模組
         session: 時段篩選 ('morning' 或 'night')
     """
-    # 建立輸出目錄
-    BASE_DIR.mkdir(parents=True, exist_ok=True)
+    _setup_environment()
     
-    # 將專案根目錄加入 sys.path（以便可以載入模組）
-    if str(PROJECT_ROOT) not in sys.path:
-        sys.path.insert(0, str(PROJECT_ROOT))
+    context = _create_execution_context(query_date, dev_mode, only_module, session)
+    logger = setup_logger(context.log_file)
     
-    # 設定參數
-    folder = "dev" if dev_mode else "modules"
-    mode = "驗收模式" if dev_mode else "正式模式"
-    exec_day = datetime.now().strftime("%Y-%m-%d")
-    exec_time = datetime.now().strftime(DATE_FORMAT)
-    exec_time_short = datetime.now().strftime("%H%M")  # 用於檔案名稱
+    _print_execution_header(logger, context)
     
-    # 設定日誌 - 檔案名稱包含時間戳記
-    log_file = BASE_DIR / f"{exec_day}_{exec_time_short}_run{'_dev' if dev_mode else ''}.log"
-    logger = setup_logger(log_file)
-    
-    # 統計計數器
-    stats = {
-        "success": 0,
-        "failed": 0,
-        "error": 0,
-        "invalid": 0,
-        "total": 0
-    }
-    
-    # 顯示標題
-    logger.info("")
-    logger.info("=" * 70)
-    logger.info(f"  📅 查詢日期: {query_date}")
-    logger.info(f"  ⏰ 執行時間: {exec_time}")
-    logger.info(f"  🔧 執行模式: {mode}")
-    if only_module:
-        logger.info(f"  🎯 指定模組: {only_module}")
-    if session:
-        session_name = "早盤 (F01-F17)" if session == "morning" else "夜盤 (F21-F25)"
-        logger.info(f"  🕐 執行時段: {session_name}")
-    logger.info("=" * 70)
-    logger.info("")
-
-    # 取得模組列表
-    modules = get_module_list(folder, only_module, session)
-    
+    modules = _get_and_validate_modules(logger, context)
     if not modules:
-        logger.warning(f"⚠️  在 '{folder}/' 資料夾中找不到任何模組")
-        if only_module:
-            logger.warning(f"    指定的模組 '{only_module}' 不存在")
         return
     
-    stats["total"] = len(modules)
-    logger.info(f"📦 找到 {len(modules)} 個模組")
-    logger.info("")
+    stats = _execute_all_modules(logger, modules, context)
     
-    # 執行各模組
-    for idx, module_name in enumerate(modules, 1):
-        logger.info(f"[{idx}/{len(modules)}] " + "─" * 50)
-
-        # 顯示執行進度（會在螢幕顯示）
-        module_short = module_name.split(".")[-1].upper()
-        logger.info(f"⚙️  執行中: {module_short} ........")
-
-        # 執行模組
-        result, status = execute_module(module_name, query_date, logger)
-        stats[status] = stats.get(status, 0) + 1
-        
-        # 儲存結果
-        try:
-            data_file = save_result(result, module_name, exec_day, dev_mode)
-            logger.info(f"💾 檔案: {data_file.name}")
-            
-            # 顯示摘要
-            print_summary(result, status, logger)
-            
-        except Exception as e:
-            logger.error(f"❌ 儲存失敗: {e}")
-            stats["error"] += 1
-        
-        logger.info("")
-    
-    # 顯示統計報告
-    logger.info("=" * 70)
-    logger.info("  📊 執行統計")
-    logger.info("=" * 70)
-    logger.info(f"  總數: {stats['total']}")
-    logger.info(f"  ✅ 成功: {stats['success']} ({stats['success']/stats['total']*100:.1f}%)")
-    logger.info(f"  ⚠️  失敗: {stats['failed']} ({stats['failed']/stats['total']*100:.1f}%)")
-    logger.info(f"  ❌ 錯誤: {stats['error']} ({stats['error']/stats['total']*100:.1f}%)")
-    logger.info(f"  ⛔ 無效: {stats['invalid']} ({stats['invalid']/stats['total']*100:.1f}%)")
-    logger.info("=" * 70)
-    logger.info(f"📝 詳細日誌: {log_file}")
-    logger.info("=" * 70)
-    logger.info("")
+    _print_execution_summary(logger, stats, context)
 
 
 def validate_date(date_str: str) -> bool:
@@ -538,18 +669,14 @@ def parse_arguments() -> Tuple[str, bool, Optional[str], Optional[str]]:
     """
     args = sys.argv[1:]
 
-    # 顯示說明
     if "--help" in args or "-h" in args:
         print_usage()
         sys.exit(0)
 
-    # 解析日期
     query_date = args[0] if args and not args[0].startswith("-") else datetime.now().strftime("%Y-%m-%d")
 
-    # 解析模式
     dev_mode = "dev" in args
 
-    # 解析指定模組
     only_module = None
     if "--module" in args:
         idx = args.index("--module")
@@ -560,7 +687,6 @@ def parse_arguments() -> Tuple[str, bool, Optional[str], Optional[str]]:
             print_usage()
             sys.exit(1)
 
-    # 解析時段
     session = None
     if "--session" in args:
         idx = args.index("--session")
@@ -575,7 +701,6 @@ def parse_arguments() -> Tuple[str, bool, Optional[str], Optional[str]]:
             print_usage()
             sys.exit(1)
 
-    # 驗證日期格式
     if not validate_date(query_date):
         print(f"❌ 錯誤: 日期格式不正確 '{query_date}'")
         print("   請使用 YYYY-MM-DD 格式，例如: 2025-12-01\n")
@@ -587,23 +712,20 @@ def parse_arguments() -> Tuple[str, bool, Optional[str], Optional[str]]:
 
 def main():
     """主程式進入點"""
-    # 設定 UTF-8 編碼以支援中文和表情符號
     if sys.stdout.encoding != 'utf-8' and not hasattr(sys.stdout, '_wrapped_for_utf8'):
         import io
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
         sys.stdout._wrapped_for_utf8 = True
 
-    # 解析參數
     query_date, dev_mode, only_module, session = parse_arguments()
 
-    # 執行
     try:
         run(query_date, dev_mode, only_module, session)
     except KeyboardInterrupt:
         print("\n\n⚠️  執行被使用者中斷 (Ctrl+C)")
         sys.exit(130)
-    except Exception as e:
-        print(f"\n❌ 程式執行失敗: {e}")
+    except Exception as error:
+        print(f"\n❌ 程式執行失敗: {error}")
         print("\n完整錯誤訊息:")
         traceback.print_exc()
         sys.exit(1)

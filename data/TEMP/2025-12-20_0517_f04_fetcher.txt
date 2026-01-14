@@ -1,1 +1,0 @@
-2025.12.20  F04:台指期貨當日收盤價 (Day N Close) 錯誤: 找不到表格資料   source: [https://www.taifex.com.tw/cht/3/futDailyMarketReport]
