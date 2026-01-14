@@ -1,0 +1,44 @@
+專案級自動化測試報告 (Project Tester Report)
+執行摘要: 針對目標檔案 
+C:\AI\Domain\test_lab\math_tool.py
+ 執行了自動化測試流程 (/project-tester)。 流程包括：環境診斷、測試案例生成、執行測試、失敗診斷與自動修復。
+
+1. 環境診斷
+語言: Python 3.9
+測試框架: pytest (已安裝)
+目標模組: 
+test_lab/math_tool.py
+ (包含除法與平均值計算邏輯)
+2. 測試案例生成 (Test Generation)
+已在 tests/ 生成測試檔案 
+test_math_tool.py
+，涵蓋以下場景：
+
+✅ Happy Path: 正常的整數/浮點數除法、正常列表平均值。
+⚠️ Edge Cases: 空列表 ([]) 計算平均值。
+❌ Error Handling: 除以零異常、錯誤型別輸入。
+3. 自動修復 (Auto-Fix Result)
+初次執行: 失敗 (Failed)。
+原因: 
+calculate_average([])
+ 導致 ZeroDivisionError (除以長度 0)。
+自動修復:
+修改 
+math_tool.py
+，加入空列表檢查 (if not numbers: return 0)。
+複測結果: 通過 (Passed)。
+4. 最終狀態
+所有 6 個測試案例皆通過。代碼魯棒性 (Robustness) 已提升，能安全處理空輸入。
+
+python
+# 修復後的 calculate_average
+def calculate_average(numbers):
+    """
+    計算列表的平均值。
+    """
+    if not numbers:
+        return 0  # Fix: Handle empty list
+    return sum(numbers) / len(numbers)
+測試檔案已保存至 
+C:\AI\Domain\test_lab\test_math_tool.py
+。

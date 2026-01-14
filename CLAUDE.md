@@ -37,10 +37,19 @@ python run.py --help
 pytest tests/
 
 # Run with verbose output
-pytest -v
+pytest tests/ -v
 
 # Run specific test file
-pytest tests/test_modules.py
+pytest tests/test_modules.py -v
+
+# Run single test function
+pytest tests/test_modules.py::test_function_name -v
+
+# Run tests and show print statements
+pytest tests/ -v -s
+
+# Run with coverage report
+pytest tests/ --cov=modules --cov-report=html
 ```
 
 ### Code Quality
@@ -73,11 +82,23 @@ pre-commit run --all-files
 - Handles safe console output to prevent I/O errors on Windows
 - Creates timestamped data files in `data/` directory
 
-**Secondary:**
-- `predict.py` - Loads factor data and generates predictions
-- `predict_dashboard.py` - Generates HTML dashboard for market forecasting
-- `main_tools.py` - CLI utility menu
-- `fetch_data.py` - Basic data fetching helper
+**Secondary Entry Points:**
+- `predict.py` - Loads factor data from `data/` directory and generates trading predictions
+  - Parses factor files (e.g., `YYYY-MM-DD_HHMM_f##_fetcher.txt`)
+  - Extracts numerical values, changes, and percentages from fetcher output
+  - Generates predictive signals: 08:45 opening forecast and intraday trend analysis
+  - Uses weighted scoring: night session price (90%), institutional positioning (5%), international markets (5%)
+  - Returns prediction format: direction (📈/📉), amplitude, confidence level, supporting factors
+
+- `predict_dashboard.py` - Generates market analysis report and updates README.md
+  - Reads latest factor data from `data/` directory
+  - Parses success/failure status from fetch results
+  - Generates market signal indicator (🟢🟡🔴 for bullish/neutral/bearish)
+  - Creates markdown tables for: international indicators, institutional positions, technical indicators, data quality
+  - Auto-updates README.md with predictions and factor overview
+
+- `main_tools.py` - CLI utility menu for running modules and tools
+- `fetch_data.py` - Helper utility for manual data fetching
 
 ### Module Organization
 
@@ -108,10 +129,18 @@ def fetch(date: str) -> str:
 ### Data Fetcher Characteristics
 
 **Type Safety:** Modules use TypedDict for structured data handling and type hints
-**Error Handling:** Each module implements comprehensive try-catch with detailed error messages
-**Logging:** Dual logging to both console and file with status tracking
-**Return Format:** Standardized formatted strings with timestamps
-**Session Filtering:** Run.py filters which modules execute based on session type
+
+**Error Handling:** Each module implements comprehensive try-catch with detailed error messages. Exceptions are always converted to status strings, never raised (fail-safe design)
+
+**Logging:** Dual logging to both console and file with status tracking. Run.py manages centralized logging to prevent I/O conflicts on Windows
+
+**Return Format:** Standardized strings with timestamps:
+- Success: `"YYYY.MM.DD F##: [factor name] [value] [source]"`
+- Failure: `"F## 錯誤: [error message] [source] (timestamp)"`
+
+**Session Filtering:** Run.py filters module execution based on session type (morning F01-F17, night F21-F25)
+
+**Browser Automation:** Modules F06 (VIX) and F11 (Weighted Index) use Selenium for dynamic website scraping. WebDriver is auto-managed by webdriver-manager
 
 ### Key Data Structures
 
@@ -126,15 +155,37 @@ def fetch(date: str) -> str:
 - Success percentage
 - Execution start/end times
 
-## Development Patterns
+## Development Workflow
+
+### Data Collection and Reporting Pipeline
+
+1. **Data Collection Phase** (`run.py`):
+   - Dynamically discovers and loads all modules from `modules/` directory
+   - Executes fetch() function for each module with specified date
+   - Saves output to timestamped text file: `data/YYYY-MM-DD_HHMM_f##_fetcher.txt`
+   - Tracks execution stats (success/failed/error counts)
+
+2. **Prediction Generation** (`predict.py`):
+   - Loads latest factor data from `data/` directory
+   - Parses numerical values and trends from fetcher output
+   - Applies weighted scoring algorithm for market predictions
+   - Generates 08:45 opening forecast and intraday trend analysis
+
+3. **Dashboard Update** (`predict_dashboard.py`):
+   - Reads all factor files and extracts latest values
+   - Determines status (success/missing/error) for each factor
+   - Generates market signal indicator and factor tables
+   - Updates README.md with current predictions and factor overview
 
 ### Adding a New Data Fetcher
 
 1. Create `modules/f##_fetcher.py` following the module contract
-2. Implement `fetch(date: str) -> str` function
-3. Return standardized format: `"YYYY.MM.DD F##: [name] [value] [source]"`
-4. Handle errors gracefully with error message in same format
-5. Use existing modules as templates (f01_fetcher.py recommended for reference)
+2. Implement `fetch(date: str) -> str` function with signature: `def fetch(date: str) -> str:`
+3. Return standardized success format: `"YYYY.MM.DD F##: [factor name] [value] [source]"`
+4. Return error format on failure: `"F## 錯誤: [detailed message] [source] (timestamp)"`
+5. Use existing modules as templates (f01_fetcher.py recommended for API calls, f06_fetcher.py for Selenium)
+6. Never raise exceptions - always catch and convert to error status strings
+7. Add session metadata to decorator (if modules organization uses tags)
 
 ### Error Handling Convention
 
@@ -177,6 +228,14 @@ poetry install
 pip install -r requirements.txt
 ```
 
+### Selenium WebDriver Setup
+
+Selenium modules (F06, F11) use `webdriver-manager` for automatic driver management:
+- No need for manual ChromeDriver download or version management
+- First run automatically detects OS and downloads compatible WebDriver
+- Cached in user's home directory: `~/.wdm/` (Windows) or `~/.wdm/` (Unix)
+- If WebDriver fails to download, check: proxy settings, internet connectivity, or manually delete cache and retry
+
 ## OpenSpec Workflow
 
 This project uses OpenSpec for spec-driven development. Always open `@/openspec/AGENTS.md` when requests involve:
@@ -204,9 +263,10 @@ openspec archive <change-id> --yes     # Archive completed changes
 
 ### Windows-Specific Considerations
 
-- UTF-8 encoding enforced for file I/O to handle Traditional Chinese characters
-- Safe console handler prevents I/O errors during execution
-- Avoid printing to console without safe handler wrapper
+- **UTF-8 Encoding:** All file I/O uses UTF-8 encoding explicitly to handle Traditional Chinese characters correctly
+- **Console Safety:** Run.py wraps console output with safe handler to prevent I/O errors on Windows (common issue with asyncio and file descriptors)
+- **Path Handling:** Use `Path` objects for cross-platform compatibility; PROJECT_ROOT is auto-detected from script location
+- **Module Import:** Modules cached in memory (MODULE_CACHE dict) to avoid repeated disk reads during dynamic imports
 
 ### Session Scheduling
 

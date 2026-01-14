@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --version:*)",
+      "Bash(claude-code:*)",
+      "Skill(skill-creator)",
+      "Skill(skill-creator:*)",
+      "Bash(python:*)",
+      "Bash($env:PYTHONIOENCODING=\"utf-8\")",
+      "Bash(powershell -Command \"$env:PYTHONIOENCODING=''utf-8''; python ''C:\\\\Users\\\\dm_li\\\\.claude\\\\plugins\\\\cache\\\\anthropic-agent-skills\\\\document-skills\\\\69c0b1a06741\\\\skills\\\\skill-creator\\\\scripts\\\\init_skill.py'' clean-code-reviewer --path ''c:\\\\AI\\\\Domain\\\\.claude\\\\skills''\")",
+      "Bash(powershell -Command \"$env:PYTHONIOENCODING=''utf-8''; & python ''C:\\\\Users\\\\dm_li\\\\.claude\\\\plugins\\\\cache\\\\anthropic-agent-skills\\\\document-skills\\\\69c0b1a06741\\\\skills\\\\skill-creator\\\\scripts\\\\init_skill.py'' clean-code-reviewer --path ''c:\\\\AI\\\\Domain\\\\.claude\\\\skills''\")",
+      "Bash(gh pr list:*)",
+      "Bash(ls:*)",
+      "Bash(echo $ANTHROPIC_API_KEY)"
+    ]
+  }
+}
