@@ -1,29 +1,3 @@
-PowerShell 7.5.4
-PS C:\Windows\System32> cd C:\Taifex
-PS C:\Taifex> .\venv32\Scripts\Activate.ps1
-(venv32) PS C:\Taifex> python run.py --help
-
-# 台指期預測系統依賴套件
-# Python 3.11+
-
-# 核心套件
-requests>=2.32.0
-pandas>=2.0.0
-beautifulsoup4>=4.14.0
-lxml>=6.0.0
-
-# Selenium 瀏覽器自動化 (F06, F11, F21-F25)
-selenium>=4.36.0
-webdriver-manager>=4.0.0
-
-# 未來可能需要的套件 (目前未使用)
-# numpy>=1.24.0
-# scikit-learn>=1.3.0
-# matplotlib>=3.7.0
-
-
-
-
 ===========================================================
  run.py  —  模組統一執行程式 (集中輸出到 data/)
 ===========================================================
@@ -34,25 +8,40 @@ webdriver-manager>=4.0.0
 - 支援正式模式和驗收模式
 - 提供詳細的執行日誌
 - 支援早盤/夜盤分時段執行
+- 自動往回搜尋最近交易日（當日無資料時）
 
 【使用方式】
-  python run.py [日期] [模式] [--module 模組名稱] [--session 時段]
+  python run.py [日期] [模式] [--module 模組名稱] [--session 時段] [--no-auto-date]
 
 【參數說明】
-  日期        - YYYY-MM-DD 格式，預設為今天
-  模式        - dev (驗收模式) 或省略 (正式模式)
-  --module    - 只執行指定的模組
-  --session   - 指定執行時段 (morning 或 night)
-              • morning: 執行早盤模組 (F01-F17)
-              • night: 執行夜盤模組 (F21-F25)
-              • 省略: 執行全部模組 (F01-F25)
+  日期          - YYYY-MM-DD 格式，預設為今天
+  模式          - dev (驗收模式) 或省略 (正式模式)
+  --module      - 只執行指定的模組
+  --session     - 指定執行時段 (morning 或 night)
+                • morning: 執行早盤模組 (F01-F17)
+                • night: 執行夜盤模組 (F21-F25)
+                • 省略: 執行全部模組 (F01-F25)
+  --no-auto-date - 停用自動找交易日功能
 
 ===========================================================
 
 【基本範例】
-  python run.py                              # 執行今天（全部模組）
-  python run.py 2025-12-01                   # 執行指定日期（全部模組）
-  python run.py --help                       # 顯示說明
+
+# 自動找交易日（預設行為）
+python run.py                           # 今天開始找
+python run.py 2026-01-18                # 從指定日期找（如遇週末會自動往回）
+
+# 僅早盤或夜盤
+python run.py --session morning         # 早盤模組 F01-F17，用 F01 測試交易日
+python run.py --session night           # 夜盤模組 F21-F25，用 F21 測試交易日
+
+# 停用自動找交易日
+python run.py 2026-01-14 --no-auto-date # 直接用指定日期，不自動往回找
+
+# 顯示說明
+python run.py --help
+
+===========================================================
 
 【時段分離範例】(重要！)
   python run.py 2025-12-19 --session morning   # 僅執行早盤模組 (F01-F17)
@@ -76,6 +65,22 @@ webdriver-manager>=4.0.0
 
 ===========================================================
 
+【自動找交易日邏輯】
+
+當執行時，程式會自動：
+1. 從指定日期開始，用 F01 (早盤) 或 F21 (夜盤) 測試是否有資料
+2. 若無資料（假日或休市），自動往前一天找
+3. 最多往回找 10 天
+4. 找到後顯示確認訊息，並用該日期執行所有模組
+
+範例輸出：
+  📡 正在尋找最新交易日 (起點: 2026-01-18)...
+    ❌ 2026-01-18 無資料 (可能是假日或資料未更新)
+    ❌ 2026-01-17 無資料 (可能是假日或資料未更新)
+  ✅ 找到交易日: 2026-01-16 (往回 2 天)
+
+===========================================================
+
 【模組測試】
   # 在 run.py 中測試指定模組
   python run.py 2025-11-28 dev --module f01_fetcher
@@ -87,10 +92,27 @@ webdriver-manager>=4.0.0
 
 【輸出檔案位置】
   - 資料檔案: C:\Taifex\data\YYYY-MM-DD_HHMM_模組名稱.txt
-  - 日誌檔案: C:\Taifex\data\run_YYYYMMDD_HHMMSS.log
+  - 日誌檔案: C:\Taifex\data\YYYY-MM-DD_HHMM_run.log
   - 不管成功或失敗，皆會寫入檔案
 
 【注意事項】
   - 使用 --session 可避免重複抓取資料
   - 早盤和夜盤分開執行，節省時間和資源
   - GitHub Actions 已設定自動分時段執行
+  - 預設會自動找交易日，加 --no-auto-date 可停用
+
+===========================================================
+
+【依賴套件】(requirements.txt)
+
+# 核心套件
+requests>=2.32.0
+pandas>=2.0.0
+beautifulsoup4>=4.14.0
+lxml>=6.0.0
+
+# Selenium 瀏覽器自動化 (F06, F11, F21-F25)
+selenium>=4.36.0
+webdriver-manager>=4.0.0
+
+===========================================================

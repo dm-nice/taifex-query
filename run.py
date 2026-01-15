@@ -8,15 +8,17 @@
 - 將結果統一輸出到 C:\Taifex\data\
 - 支援正式模式和驗收模式
 - 提供詳細的執行日誌
+- 自動往回搜尋最近交易日（當日無資料時）
 
 【使用方式】
-  python run.py [日期] [模式] [--module 模組名稱] [--session 時段]
+  python run.py [日期] [模式] [--module 模組名稱] [--session 時段] [--no-auto-date]
 
 【範例】
-  python run.py                              # 執行今天（全部模組）
-  python run.py 2025-12-01                   # 執行指定日期（全部模組）
+  python run.py                              # 執行今天（全部模組，自動找交易日）
+  python run.py 2025-12-01                   # 執行指定日期（自動找交易日）
   python run.py 2025-12-01 --session morning   # 僅執行早盤模組 (F01-F17)
   python run.py 2025-12-01 --session night     # 僅執行夜盤模組 (F21-F25)
+  python run.py 2025-12-01 --no-auto-date    # 停用自動找交易日功能
   python run.py 2025-12-01 dev               # 驗收模式
   python run.py 2025-12-01 dev --module f01_fetcher_dev
   python run.py --help                       # 顯示說明
@@ -27,7 +29,7 @@ import sys
 import logging
 import importlib
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple, Any
 from dataclasses import dataclass
@@ -56,6 +58,10 @@ MODULE_CACHE = {}
 # 台灣期貨市場分為早盤(09:00-13:45)和夜盤(15:00-05:00)兩個交易時段
 MORNING_MODULES = range(1, 18)    # F01-F17 早盤模組
 NIGHT_MODULES = range(21, 26)     # F21-F25 夜盤模組
+
+# 自動找交易日的設定
+MAX_TRADING_DAY_SEARCH = 10       # 最多往回找幾天
+TRADING_DAY_CHECK_MODULE = "f01_fetcher"  # 用來判斷是否為交易日的模組
 
 
 class ModuleStatus(Enum):
@@ -646,6 +652,105 @@ def run(query_date: str, dev_mode: bool = False, only_module: Optional[str] = No
     _print_execution_summary(logger, stats, context)
 
 
+def _is_valid_trading_data(result: str) -> bool:
+    """
+    檢查回傳結果是否為有效交易資料
+
+    Args:
+        result: 模組回傳的結果字串
+
+    Returns:
+        True 表示有有效資料，False 表示無資料（假日或休市）
+    """
+    if not result:
+        return False
+
+    # 包含這些關鍵字代表當日無交易資料
+    fail_keywords = [
+        "該日無交易資料", "假日", "休市", "錯誤:", "error",
+        "未預期的錯誤", "無法取得", "查無資料"
+    ]
+
+    for keyword in fail_keywords:
+        if keyword in result:
+            return False
+
+    return True
+
+
+def _test_trading_day(date_str: str, session: Optional[str]) -> bool:
+    """
+    測試指定日期是否為交易日
+
+    Args:
+        date_str: 日期字串 (YYYY-MM-DD)
+        session: 時段 ('morning' 或 'night')
+
+    Returns:
+        True 表示是交易日，False 表示非交易日
+    """
+    # 根據時段選擇測試模組
+    if session == "night":
+        test_module = "modules.f21_fetcher"  # 夜盤用 F21 測試
+    else:
+        test_module = f"modules.{TRADING_DAY_CHECK_MODULE}"  # 早盤用 F01 測試
+
+    try:
+        if test_module not in MODULE_CACHE:
+            MODULE_CACHE[test_module] = importlib.import_module(test_module)
+
+        loaded_module = MODULE_CACHE[test_module]
+
+        if not hasattr(loaded_module, 'fetch'):
+            return False
+
+        # 暫時禁用 logging 輸出
+        logging.disable(logging.CRITICAL)
+        try:
+            result = loaded_module.fetch(date_str)
+        finally:
+            logging.disable(logging.NOTSET)
+
+        return _is_valid_trading_data(str(result))
+
+    except Exception:
+        return False
+
+
+def find_latest_trading_day(target_date: str, session: Optional[str] = None) -> str:
+    """
+    從目標日期開始往回找，直到找到有交易資料的那天
+
+    Args:
+        target_date: 目標日期 (YYYY-MM-DD)
+        session: 時段篩選 ('morning' 或 'night')
+
+    Returns:
+        最近的交易日 (YYYY-MM-DD)
+    """
+    current_date = datetime.strptime(target_date, "%Y-%m-%d")
+
+    print(f"📡 正在尋找最新交易日 (起點: {target_date})...")
+
+    for day_offset in range(MAX_TRADING_DAY_SEARCH + 1):
+        date_str = current_date.strftime("%Y-%m-%d")
+
+        if _test_trading_day(date_str, session):
+            if day_offset == 0:
+                print(f"✅ 確認交易日: {date_str}")
+            else:
+                print(f"✅ 找到交易日: {date_str} (往回 {day_offset} 天)")
+            return date_str
+
+        if day_offset < MAX_TRADING_DAY_SEARCH:
+            print(f"  ❌ {date_str} 無資料 (可能是假日或資料未更新)")
+
+        current_date -= timedelta(days=1)
+
+    print(f"⚠️  往回找 {MAX_TRADING_DAY_SEARCH} 天仍無資料，使用原始日期: {target_date}")
+    return target_date
+
+
 def validate_date(date_str: str) -> bool:
     """驗證日期格式"""
     try:
@@ -660,12 +765,12 @@ def print_usage():
     print(__doc__)
 
 
-def parse_arguments() -> Tuple[str, bool, Optional[str], Optional[str]]:
+def parse_arguments() -> Tuple[str, bool, Optional[str], Optional[str], bool]:
     """
     解析命令列參數
 
     Returns:
-        (查詢日期, 驗收模式, 指定模組, 時段)
+        (查詢日期, 驗收模式, 指定模組, 時段, 自動找交易日)
     """
     args = sys.argv[1:]
 
@@ -676,6 +781,9 @@ def parse_arguments() -> Tuple[str, bool, Optional[str], Optional[str]]:
     query_date = args[0] if args and not args[0].startswith("-") else datetime.now().strftime("%Y-%m-%d")
 
     dev_mode = "dev" in args
+
+    # 是否啟用自動找交易日（預設啟用，加 --no-auto-date 停用）
+    auto_find_trading_day = "--no-auto-date" not in args
 
     only_module = None
     if "--module" in args:
@@ -707,7 +815,7 @@ def parse_arguments() -> Tuple[str, bool, Optional[str], Optional[str]]:
         print_usage()
         sys.exit(1)
 
-    return query_date, dev_mode, only_module, session
+    return query_date, dev_mode, only_module, session, auto_find_trading_day
 
 
 def main():
@@ -717,7 +825,15 @@ def main():
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
         sys.stdout._wrapped_for_utf8 = True
 
-    query_date, dev_mode, only_module, session = parse_arguments()
+    query_date, dev_mode, only_module, session, auto_find_trading_day = parse_arguments()
+
+    # 設定執行環境（需要在找交易日前先設定，以便載入模組）
+    _setup_environment()
+
+    # 自動找交易日
+    if auto_find_trading_day:
+        query_date = find_latest_trading_day(query_date, session)
+        print("")  # 空行分隔
 
     try:
         run(query_date, dev_mode, only_module, session)

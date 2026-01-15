@@ -1,0 +1,22 @@
+
+ 查當日資料 當日無資料 轉查前一個交易日資料
+
+一般交易時段
+            F01: 打開 網址 https://www.taifex.com.tw/cht/3/totalTableDate   台指期貨-外資 [請填入:未平倉 多空淨額口數] 
+            F02: 打開 網址 https://www.taifex.com.tw/cht/3/totalTableDate   台指期貨-外資 [請填入:未平倉 多方口數] 
+            F03: 打開 網址 https://www.taifex.com.tw/cht/3/totalTableDate   台指期貨-外資 [請填入:未平倉 空方口數] 
+            F04: 打開 網址 https://www.taifex.com.tw/cht/3/futDailyMarketReport   台指期貨-當日收盤價    [請填入:最後成交價] 
+            F05: 打開 網址 https://www.taifex.com.tw/cht/3/optDailyMarketReport   台指期貨-當日選擇權    [請填入:選擇權總成交量] 
+            F06: 打開 網址 https://mis.taifex.com.tw/futures/VolatilityQuotes     臺指選擇權波動率指數   [請填入:波動率指數]            
+            F07: 打開 網址 https://www.taifex.com.tw/cht/3/pcRatio                臺指選擇權Put/Call比  [請填入:買賣權未平倉量比率%]
+            F11: 打開 網址 https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html       加權股價     [請填入:指數收盤]
+            F12: 打開 網址 https://www.twse.com.tw/zh/trading/historical/mi-index.html      大盤統計資訊  [請填入:總計成交金額]
+            F14: 打開 網址 https://www.twse.com.tw/zh/trading/historical/stock-day.html     2330 台積電-當日    [請填入:收盤價]
+            F15: 打開 網址 https://www.twse.com.tw/zh/trading/historical/stock-day.html     2330 台積電-當日    [請填入:漲跌價差]
+            F16: 打開 網址 https://www.twse.com.tw/zh/trading/historical/stock-day.html     2330 台積電-當日(1000股=1張)  [請填入:成交張數]
+            F17: 打開 網址 https://www.twse.com.tw/fund/BFI82U                              台灣股票外資及陸資    [請填入:買賣差額]
+            
+            
+            
+            
+            
