@@ -1,1 +1,0 @@
-2026.01.14  F06: 臺指選擇權波動率指數              : 22.63  [https://mis.taifex.com.tw/futures/VolatilityQuotes]
