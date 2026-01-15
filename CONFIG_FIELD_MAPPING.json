@@ -1,0 +1,278 @@
+{
+  "description": "F01-F25 完整欄位對應表 - TAIFEX 爬蟲系統",
+  "last_updated": "2026-01-16",
+  "field_mapping": {
+    "F01": {
+      "url": "https://www.taifex.com.tw/cht/3/totalTableDate",
+      "name": "台指期貨-外資",
+      "field": "未平倒 多空淨額",
+      "unit": "口",
+      "category": "daytime",
+      "data_source": "台灣期貨交易所",
+      "status": "active"
+    },
+    "F02": {
+      "url": "https://www.taifex.com.tw/cht/3/totalTableDate",
+      "name": "台指期貨-外資",
+      "field": "未平倉 多方",
+      "unit": "口",
+      "category": "daytime",
+      "data_source": "台灣期貨交易所",
+      "status": "active"
+    },
+    "F03": {
+      "url": "https://www.taifex.com.tw/cht/3/totalTableDate",
+      "name": "台指期貨-外資",
+      "field": "未平倉 空方",
+      "unit": "口",
+      "category": "daytime",
+      "data_source": "台灣期貨交易所",
+      "status": "active"
+    },
+    "F04": {
+      "url": "https://www.taifex.com.tw/cht/3/futDailyMarketReport",
+      "name": "台指期貨-當日收盤",
+      "field": "最後成交價",
+      "unit": "",
+      "category": "daytime",
+      "data_source": "台灣期貨交易所",
+      "status": "active"
+    },
+    "F05": {
+      "url": "https://www.taifex.com.tw/cht/3/optDailyMarketReport",
+      "name": "台指選擇權-當日",
+      "field": "選擇權總成交量",
+      "unit": "",
+      "category": "daytime",
+      "data_source": "台灣期貨交易所",
+      "status": "active"
+    },
+    "F06": {
+      "url": "https://mis.taifex.com.tw/futures/VolatilityQuotes",
+      "name": "臺指選擇權波動率",
+      "field": "波動率指數",
+      "unit": "",
+      "category": "daytime",
+      "data_source": "台灣期貨交易所",
+      "status": "active"
+    },
+    "F07": {
+      "url": "https://www.taifex.com.tw/cht/3/pcRatio",
+      "name": "臺指選擇權Put/Call",
+      "field": "買賣權未平倉量比率%",
+      "unit": "",
+      "category": "daytime",
+      "data_source": "台灣期貨交易所",
+      "status": "active"
+    },
+    "F08": {
+      "name": "[保留項目]",
+      "category": "daytime",
+      "status": "reserved"
+    },
+    "F09": {
+      "name": "[保留項目]",
+      "category": "daytime",
+      "status": "reserved"
+    },
+    "F10": {
+      "name": "[保留項目]",
+      "category": "daytime",
+      "status": "reserved"
+    },
+    "F11": {
+      "url": "https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html",
+      "name": "加權股價指數",
+      "field": "指數收盤",
+      "unit": "",
+      "category": "daytime",
+      "data_source": "台灣證券交易所",
+      "status": "active"
+    },
+    "F12": {
+      "url": "https://www.twse.com.tw/zh/trading/historical/mi-index.html",
+      "name": "大盤統計資訊",
+      "field": "總計成交金額",
+      "unit": "",
+      "category": "daytime",
+      "data_source": "台灣證券交易所",
+      "status": "active"
+    },
+    "F13": {
+      "url": "https://www.wantgoo.com/index/0000",
+      "name": "加權股價 20日均線",
+      "field": "均線距離",
+      "unit": "",
+      "category": "daytime",
+      "data_source": "Wantgoo",
+      "status": "active",
+      "note": "需計算或特殊提取"
+    },
+    "F14": {
+      "url": "https://www.twse.com.tw/zh/trading/historical/stock-day.html",
+      "name": "2330台積電-當日",
+      "field": "收盤價",
+      "unit": "",
+      "category": "daytime",
+      "data_source": "台灣證券交易所",
+      "stock_code": "2330",
+      "status": "active"
+    },
+    "F15": {
+      "url": "https://www.twse.com.tw/zh/trading/historical/stock-day.html",
+      "name": "2330台積電-當日",
+      "field": "漲跌價差",
+      "unit": "",
+      "category": "daytime",
+      "data_source": "台灣證券交易所",
+      "stock_code": "2330",
+      "status": "active"
+    },
+    "F16": {
+      "url": "https://www.twse.com.tw/zh/trading/historical/stock-day.html",
+      "name": "2330台積電-當日",
+      "field": "成交張數",
+      "unit": "",
+      "category": "daytime",
+      "data_source": "台灣證券交易所",
+      "stock_code": "2330",
+      "status": "active"
+    },
+    "F17": {
+      "url": "https://www.twse.com.tw/fund/BFI82U",
+      "name": "台灣股票外資及陸資",
+      "field": "買賣差額",
+      "unit": "",
+      "category": "daytime",
+      "data_source": "台灣證券交易所",
+      "status": "active"
+    },
+    "F18": {
+      "name": "[保留項目]",
+      "category": "daytime",
+      "status": "reserved"
+    },
+    "F19": {
+      "name": "[保留項目]",
+      "category": "daytime",
+      "status": "reserved"
+    },
+    "F20": {
+      "name": "[保留項目]",
+      "category": "daytime",
+      "status": "reserved"
+    },
+    "F21": {
+      "url": "https://www.wantgoo.com/global",
+      "name": "NASDAQ指數",
+      "field": "漲跌幅",
+      "unit": "",
+      "category": "nighttime",
+      "data_source": "Wantgoo",
+      "format": "signed_number",
+      "status": "active",
+      "note": "格式: +301.26 或 -301.26 (無% 符號)"
+    },
+    "F22": {
+      "url": "https://www.wantgoo.com/global",
+      "name": "費城半導體指數",
+      "field": "漲跌幅",
+      "unit": "",
+      "category": "nighttime",
+      "data_source": "Wantgoo",
+      "format": "signed_number",
+      "status": "active",
+      "note": "格式: +301.26 或 -301.26 (無% 符號)"
+    },
+    "F23": {
+      "url": "https://www.wantgoo.com/global",
+      "name": "EM-ND期指數",
+      "field": "漲跌幅",
+      "unit": "",
+      "category": "nighttime",
+      "data_source": "Wantgoo",
+      "format": "signed_number",
+      "status": "active",
+      "note": "格式: +301.26 或 -301.26 (無% 符號)"
+    },
+    "F24": {
+      "url": "https://www.wantgoo.com/global",
+      "name": "台積電ADR",
+      "field": "漲跌幅",
+      "unit": "",
+      "category": "nighttime",
+      "data_source": "Wantgoo",
+      "format": "signed_number",
+      "status": "active",
+      "note": "格式: +301.26 或 -301.26 (無% 符號)"
+    },
+    "F25": {
+      "url": "https://www.wantgoo.com/global",
+      "name": "台指期盤後",
+      "field": "漲跌幅",
+      "unit": "",
+      "category": "nighttime",
+      "data_source": "Wantgoo",
+      "format": "signed_number",
+      "status": "active",
+      "note": "格式: +301.26 或 -301.26 (無% 符號)"
+    }
+  },
+  "category_summary": {
+    "daytime": {
+      "count": 20,
+      "execution_time": "21:00",
+      "date_reference": "當日",
+      "description": "一般交易時段資料"
+    },
+    "nighttime": {
+      "count": 5,
+      "execution_time": "05:10 (隔日)",
+      "date_reference": "隔日",
+      "description": "盤後交易時段資料"
+    },
+    "reserved": {
+      "count": 5,
+      "fields": ["F08", "F09", "F10", "F18", "F19", "F20"],
+      "display": "[ 保留項目 ]"
+    }
+  },
+  "data_sources": {
+    "台灣期貨交易所": {
+      "count": 7,
+      "fields": ["F01", "F02", "F03", "F04", "F05", "F06", "F07"],
+      "reliability": "高"
+    },
+    "台灣證券交易所": {
+      "count": 8,
+      "fields": ["F11", "F12", "F14", "F15", "F16", "F17"],
+      "reliability": "高"
+    },
+    "Wantgoo": {
+      "count": 6,
+      "fields": ["F13", "F21", "F22", "F23", "F24", "F25"],
+      "reliability": "中"
+    }
+  },
+  "special_cases": {
+    "F21-F25": {
+      "include_sign": true,
+      "include_percentage": false,
+      "example": "+301.26 或 -45.89",
+      "timezone": "UTC+8",
+      "date": "隔日 (美股收盤後)"
+    },
+    "F08-F10": {
+      "status": "reserved",
+      "display": "[ 保留項目 ]"
+    },
+    "F13": {
+      "requires_calculation": true,
+      "note": "均線距離可能需計算或特殊提取方式"
+    },
+    "F18-F20": {
+      "status": "reserved",
+      "display": "[ 保留項目 ]"
+    }
+  }
+}
