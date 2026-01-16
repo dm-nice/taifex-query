@@ -1,4 +1,5 @@
 import re
+import time
 from utils.date_utils import get_current_taiwan_date
 
 try:
@@ -43,6 +44,9 @@ def query_wantgoo_nighttime(date_str=None):
             try:
                 # 導航到頁面
                 page.goto('https://www.wantgoo.com/global', wait_until='networkidle', timeout=30000)
+
+                # 等待 JavaScript 加載表格數據
+                time.sleep(2)
 
                 # 使用 JavaScript 從表格中提取數據
                 table_data = page.evaluate('''() => {
