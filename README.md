@@ -198,7 +198,7 @@ python daytime_query.py       # F01-F20
 python nighttime_query.py     # F21-F25
 
 # 執行測試
-pytest tests/
+pytest dev/tests/
 
 # 代碼格式化
 black .
