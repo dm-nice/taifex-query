@@ -61,8 +61,8 @@ jobs:
       # 8. 提交結果到 GitHub
       - name: 提交到 GitHub
         run: |
-          if [[ -n $(git status -s) ]]; then
-            git add output/
+          if [[ -n $(git status -s output/) ]]; then
+            git add output/ --force
             git commit -m "自動爬蟲: 夜盤數據 $(date +'%Y-%m-%d %H:%M')'
 
               執行時間: $(date)
