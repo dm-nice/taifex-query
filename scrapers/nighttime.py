@@ -47,15 +47,18 @@ def query_wantgoo_nighttime(date_str=None):
                 # 使用 JavaScript 從表格中提取數據
                 table_data = page.evaluate('''() => {
                     const results = [];
-                    document.querySelectorAll('table.global-tb tbody tr').forEach(row => {
-                        const cells = row.querySelectorAll('td');
-                        if (cells.length >= 3) {
-                            const name = cells[0]?.innerText?.trim() || '';
-                            const change = cells[2]?.innerText?.trim() || '';
-                            if (name && change) {
-                                results.push({name: name, change: change});
+                    const tables = document.querySelectorAll('table.global-tb');
+                    tables.forEach(table => {
+                        table.querySelectorAll('tr').forEach(row => {
+                            const cells = row.querySelectorAll('td');
+                            if (cells.length >= 3) {
+                                const name = cells[0]?.innerText?.trim() || '';
+                                const change = cells[2]?.innerText?.trim() || '';
+                                if (name && change) {
+                                    results.push({name: name, change: change});
+                                }
                             }
-                        }
+                        });
                     });
                     return results;
                 }''')
