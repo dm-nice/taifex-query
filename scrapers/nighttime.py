@@ -99,11 +99,11 @@ def query_wantgoo_nighttime(date_str=None):
             ''')
 
             try:
-                # 訪問目標頁面
-                page.goto(WANTGOO_URL, wait_until='networkidle', timeout=30000)
+                # 訪問目標頁面（使用 domcontentloaded 避免長時間 networkidle 等待）
+                page.goto(WANTGOO_URL, wait_until='domcontentloaded', timeout=30000)
 
                 # 等待 JavaScript 完全加載數據
-                time.sleep(3)
+                time.sleep(4)
 
                 # 從頁面文本中提取數據
                 page_text = page.evaluate('() => document.body.innerText')
