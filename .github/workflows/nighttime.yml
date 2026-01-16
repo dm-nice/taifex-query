@@ -34,7 +34,8 @@ jobs:
       - name: 安裝依賴
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install --no-cache-dir -r requirements.txt
+          pip list | grep -E "pytz|playwright|requests"
 
       # 4. 安裝 Playwright 瀏覽器
       - name: 安裝 Playwright 瀏覽器
