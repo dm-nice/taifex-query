@@ -8,6 +8,57 @@ try:
 except ImportError:
     PLAYWRIGHT_AVAILABLE = False
 
+# 常量定義
+WANTGOO_URL = 'https://www.wantgoo.com/global'
+BROWSER_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
+# 指標對應表
+INDICATOR_CONFIG = {
+    'NASDAQ': ('F21', 'NASDAQ指數'),
+    '費城半導體': ('F22', '費城半導體指數'),
+    'EM-ND': ('F23', 'EM-ND期指數'),
+    'ADR': ('F24', '台積電ADR'),
+    '台指期盤後': ('F25', '台指期盤後'),
+}
+
+def _parse_indicator_line(line, indicator_map):
+    """
+    從單行文本解析指標數據
+    格式: "NASDAQ	23530.02	△58.27	0.25	04:59"
+    """
+    parts = line.split('\t')
+    if len(parts) < 3:
+        return None
+
+    # 逐個檢查指標關鍵詞
+    for search_key, (f_code, display_name) in indicator_map.items():
+        if search_key not in line:
+            continue
+
+        # 提取漲跌值（第三欄）
+        change_text = parts[2].strip()
+        match = re.search(r'([▲△▼▽\+\-])([0-9.]+)', change_text)
+
+        if not match:
+            continue
+
+        sign_char = match.group(1)
+        value_num = match.group(2)
+
+        # 標準化符號
+        change_value = f"+{value_num}" if sign_char in ('▲', '△', '+') else f"-{value_num}"
+
+        return {
+            'f_code': f_code,
+            'name': display_name,
+            'field': '漲跌幅',
+            'value': change_value,
+            'unit': ''
+        }
+
+    return None
+
+
 def query_wantgoo_nighttime(date_str=None):
     """
     F21-F25: Wantgoo 全球市場數據 (美股及台指期盤後)
@@ -25,16 +76,8 @@ def query_wantgoo_nighttime(date_str=None):
         print("Playwright not available. Cannot fetch Wantgoo data.")
         return None
 
-    # 指標對應表（搜尋文本 → F代碼, 名稱）
-    indicator_map = {
-        'NASDAQ': ('F21', 'NASDAQ指數'),
-        '費城半導體': ('F22', '費城半導體指數'),
-        'EM-ND': ('F23', 'EM-ND期指數'),
-        'ADR': ('F24', '台積電ADR'),
-        '台指期盤後': ('F25', '台指期盤後'),
-    }
-
     results = []
+    found_codes = set()
 
     try:
         with sync_playwright() as p:
@@ -45,10 +88,7 @@ def query_wantgoo_nighttime(date_str=None):
             )
 
             # 設置真實的 User-Agent
-            context = browser.new_context(
-                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            )
-
+            context = browser.new_context(user_agent=BROWSER_USER_AGENT)
             page = context.new_page()
 
             # 隱藏 webdriver 屬性
@@ -59,53 +99,34 @@ def query_wantgoo_nighttime(date_str=None):
             ''')
 
             try:
-                # 先訪問首頁建立 session
-                page.goto('https://www.wantgoo.com/', wait_until='networkidle', timeout=30000)
-                time.sleep(1)
-
-                # 再訪問目標頁面
-                page.goto('https://www.wantgoo.com/global', wait_until='networkidle', timeout=30000)
+                # 訪問目標頁面
+                page.goto(WANTGOO_URL, wait_until='networkidle', timeout=30000)
 
                 # 等待 JavaScript 完全加載數據
-                time.sleep(5)
+                time.sleep(3)
 
                 # 從頁面文本中提取數據
                 page_text = page.evaluate('() => document.body.innerText')
 
                 # 逐行解析文本尋找指標
-                lines = page_text.split('\n')
-                for line in lines:
+                for line in page_text.split('\n'):
                     line = line.strip()
+
+                    # 跳過無效行
                     if not line or len(line) < 5:
                         continue
 
-                    # 檢查是否包含我們的指標
-                    for search_key, (f_code, display_name) in indicator_map.items():
-                        if search_key in line and f_code not in {r['f_code'] for r in results}:
-                            # 解析該行，尋找漲跌值
-                            # 格式: "NASDAQ	23530.02	△58.27	0.25	04:59"
-                            parts = line.split('\t')
-                            if len(parts) >= 3:
-                                change_text = parts[2].strip()
-                                # 提取數值
-                                match = re.search(r'([▲△▼▽\+\-])([0-9.]+)', change_text)
-                                if match:
-                                    sign_char = match.group(1)
-                                    value_num = match.group(2)
+                    # 已找到所有指標則終止
+                    if len(found_codes) == len(INDICATOR_CONFIG):
+                        break
 
-                                    # 標準化符號
-                                    if sign_char in ('▲', '△', '+'):
-                                        change_value = f"+{value_num}"
-                                    else:
-                                        change_value = f"-{value_num}"
+                    # 解析指標行
+                    indicator_data = _parse_indicator_line(line, INDICATOR_CONFIG)
 
-                                    results.append({
-                                        'f_code': f_code,
-                                        'name': display_name,
-                                        'field': '漲跌幅',
-                                        'value': change_value,
-                                        'unit': ''
-                                    })
+                    # 找到新指標則添加
+                    if indicator_data and indicator_data['f_code'] not in found_codes:
+                        results.append(indicator_data)
+                        found_codes.add(indicator_data['f_code'])
 
             finally:
                 context.close()
