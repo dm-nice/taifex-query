@@ -11,7 +11,7 @@ except ImportError:
 def query_wantgoo_nighttime(date_str=None):
     """
     F21-F25: Wantgoo 全球市場數據 (美股及台指期盤後)
-    使用 Playwright JavaScript 評估擷取頁面數據
+    使用 Playwright 反偵測技巧擷取頁面數據
     - F21: NASDAQ指數
     - F22: 費城半導體指數
     - F23: EM-ND期指數
@@ -38,68 +38,77 @@ def query_wantgoo_nighttime(date_str=None):
 
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
+            # 使用反偵測設置
+            browser = p.chromium.launch(
+                headless=True,
+                args=['--disable-blink-features=AutomationControlled']
+            )
+
+            # 設置真實的 User-Agent
+            context = browser.new_context(
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            )
+
+            page = context.new_page()
+
+            # 隱藏 webdriver 屬性
+            page.add_init_script('''
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => false
+                });
+            ''')
 
             try:
-                # 導航到頁面
+                # 先訪問首頁建立 session
+                page.goto('https://www.wantgoo.com/', wait_until='networkidle', timeout=30000)
+                time.sleep(1)
+
+                # 再訪問目標頁面
                 page.goto('https://www.wantgoo.com/global', wait_until='networkidle', timeout=30000)
 
-                # 等待 JavaScript 加載表格數據
-                time.sleep(2)
+                # 等待 JavaScript 完全加載數據
+                time.sleep(5)
 
-                # 使用 JavaScript 從表格中提取數據
-                table_data = page.evaluate('''() => {
-                    const results = [];
-                    const tables = document.querySelectorAll('table.global-tb');
-                    tables.forEach(table => {
-                        table.querySelectorAll('tr').forEach(row => {
-                            const cells = row.querySelectorAll('td');
-                            if (cells.length >= 3) {
-                                const name = cells[0]?.innerText?.trim() || '';
-                                const change = cells[2]?.innerText?.trim() || '';
-                                if (name && change) {
-                                    results.push({name: name, change: change});
-                                }
-                            }
-                        });
-                    });
-                    return results;
-                }''')
+                # 從頁面文本中提取數據
+                page_text = page.evaluate('() => document.body.innerText')
 
-                # 處理結果並去重
-                seen_f_codes = set()
-                for row_data in table_data:
-                    name = row_data.get('name', '')
-                    change_text = row_data.get('change', '')
+                # 逐行解析文本尋找指標
+                lines = page_text.split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if not line or len(line) < 5:
+                        continue
 
-                    # 對比每個指標
+                    # 檢查是否包含我們的指標
                     for search_key, (f_code, display_name) in indicator_map.items():
-                        if search_key in name and f_code not in seen_f_codes:
-                            # 提取數值：從 "▲123.45" 或 "▼123.45" 中提取
-                            # change_text 格式: "▲58.27" 或 "▼45.89"
-                            match = re.search(r'([▲▼\+\-])([0-9.]+)', change_text)
-                            if match:
-                                sign_char = match.group(1)
-                                value_num = match.group(2)
+                        if search_key in line and f_code not in {r['f_code'] for r in results}:
+                            # 解析該行，尋找漲跌值
+                            # 格式: "NASDAQ	23530.02	△58.27	0.25	04:59"
+                            parts = line.split('\t')
+                            if len(parts) >= 3:
+                                change_text = parts[2].strip()
+                                # 提取數值
+                                match = re.search(r'([▲△▼▽\+\-])([0-9.]+)', change_text)
+                                if match:
+                                    sign_char = match.group(1)
+                                    value_num = match.group(2)
 
-                                # 標準化符號
-                                if sign_char in ('▲', '+'):
-                                    change_value = f"+{value_num}"
-                                else:  # ▼ or -
-                                    change_value = f"-{value_num}"
+                                    # 標準化符號
+                                    if sign_char in ('▲', '△', '+'):
+                                        change_value = f"+{value_num}"
+                                    else:
+                                        change_value = f"-{value_num}"
 
-                                results.append({
-                                    'f_code': f_code,
-                                    'name': display_name,
-                                    'field': '漲跌幅',
-                                    'value': change_value,
-                                    'unit': ''
-                                })
-                                seen_f_codes.add(f_code)  # 標記已處理
-                            break  # 找到匹配就跳出
+                                    results.append({
+                                        'f_code': f_code,
+                                        'name': display_name,
+                                        'field': '漲跌幅',
+                                        'value': change_value,
+                                        'unit': ''
+                                    })
 
             finally:
+                context.close()
                 browser.close()
 
         return results if results else None
