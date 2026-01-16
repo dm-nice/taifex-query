@@ -1,99 +1,119 @@
-import requests
-from bs4 import BeautifulSoup
+import re
 from utils.date_utils import get_current_taiwan_date
 
-def query_taifex_night_tx(date_str=None):
+try:
+    from playwright.sync_api import sync_playwright
+    PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    PLAYWRIGHT_AVAILABLE = False
+
+def query_wantgoo_nighttime(date_str=None):
     """
-    F21: 盤後台指期-收盤價
-    F22: 盤後台指期-成交量
-    From futDailyMarketReport with marketCode=1
+    F21-F25: Wantgoo 全球市場數據 (美股及台指期盤後)
+    使用 Playwright JavaScript 評估擷取頁面數據
+    - F21: NASDAQ指數
+    - F22: 費城半導體指數
+    - F23: EM-ND期指數
+    - F24: 台積電ADR
+    - F25: 台指期盤後
     """
     if date_str is None:
         date_str = get_current_taiwan_date()
-        
-    query_date = date_str.replace('.', '/')
-    url = "https://www.taifex.com.tw/cht/3/futDailyMarketReport"
-    
-    # queryType=2, marketCode=1 (Night)
-    payload = {
-        "queryType": "2", 
-        "marketCode": "1", 
-        "commodity_id": "TX", 
-        "queryDate": query_date
-    }
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
-    
-    try:
-        response = requests.post(url, data=payload, headers=headers, timeout=15)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        table = soup.find('table', class_='table_f')
-        
-        results = []
-        if table:
-            for row in table.find_all('tr'):
-                col_text = row.get_text(strip=True)
-                # 排除小台 (MTX) ? 網頁選 TX 通常只有 TX
-                # 確認第一欄包含 TX 且年份 (避免標題)
-                tds = row.find_all('td')
-                if len(tds) > 10 and "TX" in tds[0].get_text():
-                    # Columns usually:
-                    # 0: Contract (TX 202601)
-                    # 1: Open
-                    # 2: High
-                    # 3: Low
-                    # 4: Close (成交價 of Night)
-                    # 5: Change
-                    # 6: Change%
-                    # 7: Volume (成交量)
-                    # 8: Settlement
-                    # 9: OI
-                    # ...
-                    
-                    # Check diagnose output structure or F04 logic.
-                    # F04: price = tds[5] in day report?
-                    # Let's count generic taifex columns:
-                    # 商品, 開盤, 最高, 最低, 收盤(成交), 漲跌, %, 量, 結算, OI...
-                    # Count: 0, 1, 2, 3, 4?
-                    
-                    # Safer: Check header? No, just use index 5 (Close) and 8 (Vol)?
-                    # Wait, diagnose output: "30940 30990 30657 30841"
-                    # Open(1), High(2), Low(3), Close(4)?
-                    
-                    close = tds[5].get_text(strip=True) # Usually index 5 is consistent with Day?
-                    # Let's verify F04 logic in daytime.py
-                    # "if len(tds) > 5 and ... price = tds[5]" from Step 501.
-                    # So index 5 is Price.
-                    
-                    vol = tds[8].get_text(strip=True) # Volume?
-                    # If index 5 is Close.
-                    # 6 is Change, 7 is %, 8 is Volume?
-                    # Diagnose string: "0.45%52310".
-                    # Percentage is index 7. Volume is index 8.
-                    
-                    if close != "-":
-                         results.append({"f_code": "F21", "name": "盤後台指期", "field": "收盤價", "value": close, "unit": ""})
-                    if vol != "-":
-                         results.append({"f_code": "F22", "name": "盤後台指期", "field": "成交量", "value": vol, "unit": "口"})
-                    
-                    return results
-                    
+
+    if not PLAYWRIGHT_AVAILABLE:
+        print("Playwright not available. Cannot fetch Wantgoo data.")
         return None
-        
+
+    # 指標對應表（搜尋文本 → F代碼, 名稱）
+    indicator_map = {
+        'NASDAQ': ('F21', 'NASDAQ指數'),
+        '費城半導體': ('F22', '費城半導體指數'),
+        'EM-ND': ('F23', 'EM-ND期指數'),
+        'ADR': ('F24', '台積電ADR'),
+        '台指期盤後': ('F25', '台指期盤後'),
+    }
+
+    results = []
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+
+            try:
+                # 導航到頁面
+                page.goto('https://www.wantgoo.com/global', wait_until='networkidle', timeout=30000)
+
+                # 使用 JavaScript 從表格中提取數據
+                table_data = page.evaluate('''() => {
+                    const results = [];
+                    document.querySelectorAll('table.global-tb tbody tr').forEach(row => {
+                        const cells = row.querySelectorAll('td');
+                        if (cells.length >= 3) {
+                            const name = cells[0]?.innerText?.trim() || '';
+                            const change = cells[2]?.innerText?.trim() || '';
+                            if (name && change) {
+                                results.push({name: name, change: change});
+                            }
+                        }
+                    });
+                    return results;
+                }''')
+
+                # 處理結果並去重
+                seen_f_codes = set()
+                for row_data in table_data:
+                    name = row_data.get('name', '')
+                    change_text = row_data.get('change', '')
+
+                    # 對比每個指標
+                    for search_key, (f_code, display_name) in indicator_map.items():
+                        if search_key in name and f_code not in seen_f_codes:
+                            # 提取數值：從 "▲123.45" 或 "▼123.45" 中提取
+                            # change_text 格式: "▲58.27" 或 "▼45.89"
+                            match = re.search(r'([▲▼\+\-])([0-9.]+)', change_text)
+                            if match:
+                                sign_char = match.group(1)
+                                value_num = match.group(2)
+
+                                # 標準化符號
+                                if sign_char in ('▲', '+'):
+                                    change_value = f"+{value_num}"
+                                else:  # ▼ or -
+                                    change_value = f"-{value_num}"
+
+                                results.append({
+                                    'f_code': f_code,
+                                    'name': display_name,
+                                    'field': '漲跌幅',
+                                    'value': change_value,
+                                    'unit': ''
+                                })
+                                seen_f_codes.add(f_code)  # 標記已處理
+                            break  # 找到匹配就跳出
+
+            finally:
+                browser.close()
+
+        return results if results else None
+
     except Exception as e:
-        print(f"Night TX Error: {e}")
+        print(f"Wantgoo Nighttime Error: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def query_nighttime_data(date_str=None):
+    """
+    查詢夜盤數據 (F21-F25)
+    """
     results = []
-    
-    # Get Night TX
-    r1 = query_taifex_night_tx(date_str)
-    if r1: results.extend(r1)
-    
-    # Handle F06 here if needed? No, F06 is VIX (Daytime).
-    
-    # Sort
+
+    # Get Wantgoo Nighttime Data (F21-F25)
+    r1 = query_wantgoo_nighttime(date_str)
+    if r1:
+        results.extend(r1)
+
+    # Sort by F-code
     results.sort(key=lambda x: x['f_code'])
     return results
