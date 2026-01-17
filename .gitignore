@@ -33,6 +33,11 @@ venv-linux/
 
 
 
+venv-linux/
+venv-win/
+
+
+
 # IDE
 .vscode/
 .idea/
