@@ -1,6 +1,6 @@
 #!/bin/bash
 cd /home/dm/taifex-query
-source venv32/bin/activate
+source venv-linux/bin/activate
 
 # 1. 暫存所有變更，讓工作區變乾淨
 echo ">>> Step 1: 暫存本地變更 (Stash)..."
