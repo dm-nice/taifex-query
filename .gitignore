@@ -28,6 +28,10 @@ venv/
 venv32/
 ENV/
 env/
+venv-win/
+venv-linux/
+
+
 
 # IDE
 .vscode/
