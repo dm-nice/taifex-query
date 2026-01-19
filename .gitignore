@@ -1,7 +1,6 @@
 line.py/
 
 
-
 # Python
 __pycache__/
 *.py[cod]
@@ -28,18 +27,14 @@ share/python-wheels/
 MANIFEST
 
 # Virtual Environment
+env/
 venv/
 venv32/
-ENV/
-env/
+
 venv-win/
-venv-linux/
-
-
+venv32-win/
 
 venv-linux/
-venv-win/
-
 
 
 # IDE
