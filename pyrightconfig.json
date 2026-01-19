@@ -1,0 +1,19 @@
+{
+  "include": ["."],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/venv-win",
+    "**/venv32",
+    "**/build",
+    "**/dist",
+    "**/docs"
+  ],
+  "venvPath": ".",
+  "venv": "venv-win",
+  "pythonVersion": "3.10",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "pythonPlatform": "Windows"
+}
