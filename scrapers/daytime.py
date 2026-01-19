@@ -282,61 +282,6 @@ def query_twse_foreign_buy(session: requests.Session, date_str: str) -> Optional
         print(f"F17 Error: {e}")
         return None
 
-def calculate_f13_ma20(session: requests.Session, date_str: str, current_close: str) -> Optional[List[Dict[str, Any]]]:
-    """計算 F13: 20日均線距離"""
-    if not current_close: return None
-        
-    try:
-        y, m, d = map(int, date_str.split('.'))
-        
-        def get_month_closes(year, month):
-            _random_sleep()
-            q_date = f"{year}{month:02d}01"
-            url = f"https://www.twse.com.tw/rwd/zh/TAIEX/MI_5MINS_HIST?response=json&date={q_date}"
-            h = BASE_HEADERS_TWSE.copy()
-            h["Referer"] = "https://www.twse.com.tw/zh/indices/taiex/mi-5min-hist.html"
-            
-            res = session.get(url, headers=h, timeout=15).json()
-            closes = []
-            if res.get('stat') == 'OK':
-                for row in res['data']:
-                    # row[4] is Close
-                    closes.append(float(row[4].replace(',', '')))
-            return closes
-
-        # Logic: fetch last month and this month to ensure we have 20 days
-        last_m = m - 1
-        last_y = y
-        if last_m < 1:
-            last_m = 12
-            last_y -= 1
-            
-        history_closes = []
-        history_closes.extend(get_month_closes(last_y, last_m))
-        history_closes.extend(get_month_closes(y, m))
-        
-        target_price = float(current_close.replace(',', ''))
-        
-        # Find index of target_price (scanning from end)
-        idx = -1
-        found = False
-        for i in range(len(history_closes) - 1, -1, -1):
-            if abs(history_closes[i] - target_price) < 0.01:
-                idx = i
-                found = True
-                break
-                
-        if found and idx >= 19:
-            ma20_slice = history_closes[idx-19 : idx+1]
-            ma20 = sum(ma20_slice) / 20
-            dist = target_price - ma20
-            return [{"f_code": "F13", "name": "台灣加權股價指數 20日均線", "field": "均線距離", "value": f"{dist:.2f}", "unit": ""}]
-            
-        return None
-    except Exception as e:
-        print(f"F13 Error: {e}")
-        return None
-
 def query_daytime_data(date_str: Optional[str] = None) -> List[Dict[str, Any]]:
     """Main aggregation function for Daytime Data"""
     if date_str is None:
@@ -365,18 +310,13 @@ def query_daytime_data(date_str: Optional[str] = None) -> List[Dict[str, Any]]:
         r5 = query_twse_market_data(d, session_twse); (res.extend(r5) if r5 else None)
         r6 = query_twse_stock_day(session_twse, d); (res.extend(r6) if r6 else None)
         r7 = query_twse_foreign_buy(session_twse, d); (res.extend(r7) if r7 else None)
-        
-        # --- Post-Processing (F13) ---
-        f11_val = next((item['value'] for item in res if item['f_code'] == 'F11'), None)
-        if f11_val:
-            r8 = calculate_f13_ma20(session_twse, d, f11_val); (res.extend(r8) if r8 else None)
-            
+
         return res
 
     results = fetch_all_with_fallback(date_str)
     
     # Check for missing critical codes and fallback if necessary
-    expected_codes = {'F01', 'F02', 'F03', 'F04', 'F05', 'F07', 'F11', 'F12', 'F13', 'F14', 'F15', 'F16', 'F17'}
+    expected_codes = {'F01', 'F02', 'F03', 'F04', 'F05', 'F07', 'F11', 'F12', 'F14', 'F15', 'F16', 'F17'}
     actual_codes = {item['f_code'] for item in results}
     
     if expected_codes - actual_codes:
