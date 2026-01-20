@@ -1,0 +1,121 @@
+這表示在執行 sudo npm uninstall -g 之後，系統已經找不到 claude 的執行檔了。因為你的作業系統是 Ubuntu 24.04，我們可以用最乾淨的方式重新安裝。
+
+請按照以下步驟操作：
+
+1. 使用官方推薦的腳本重新安裝
+既然 npm 版本已經移除，建議直接使用官方提供的安裝腳本。這會將 claude 安裝到你的使用者目錄下（通常是 ~/.local/bin），避開 sudo 權限問題。
+
+請在終端機輸入：
+
+Bash
+
+curl -fsSL https://claude.ai/install-cli.sh | sh
+2. 更新環境變數 (重要)
+安裝完成後，Ubuntu 可能還沒把新路徑加入系統搜尋清單，所以會出現「無此指令」。請執行：
+
+Bash
+
+source ~/.bashrc
+(如果你是用 zsh，請執行 source ~/.zshrc)
+
+3. 確認安裝成功
+接著測試是否能正常啟動：
+
+Bash
+
+claude
+如果依然顯示「無此指令」？
+這通常是因為 ~/.local/bin 不在你的 PATH 裡面。你可以手動檢查一下：
+
+檢查檔案是否存在：
+
+Bash
+
+ls ~/.local/bin/claude
+如果檔案存在，手動將路徑加入系統： 執行以下指令：
+
+Bash
+
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+為什麼不建議再用 npm i -g？
+在 Ubuntu 上，全域的 npm 路徑通常歸 root 所有，這會導致未來每次 claude 想要自動更新時，都會因為權限不足而噴出你之前看到的 Auto-update failed 錯誤。使用上述的腳本安裝是目前最穩定的做法。
+
+安裝完後，請再試一次 claude，看看是否能正常進入聊天介面？
+
+================================
+看來 Anthropic 目前可能對直接透過 curl 下載腳本做了限制（403 Forbidden），或者該網址尚未對所有地區開放。
+
+既然你使用的是 Ubuntu 24.04，我們回歸最穩定的 npm 安裝法，但這次我們要徹底解決權限問題，避免再次出現 Auto-update failed。
+
+請按照以下步驟操作：
+
+1. 使用正確的 npm 指令重新安裝
+我們加上 --unsafe-perm 參數（有時在 Linux 環境下必要）並重新安裝全域版本：
+
+Bash
+
+sudo npm install -g @anthropic-ai/claude-code --unsafe-perm
+2. 修正權限（核心步驟）
+安裝完後，報錯的主因是 claude 的設定檔目錄（~/.config/claude-code）可能被 root 佔用了。請執行以下指令將權限拿回來：
+
+Bash
+
+sudo chown -R $USER:$USER ~/.config/claude-code
+(如果資料夾不存在是正常的，請繼續下一步)
+
+3. 使用 claude doctor 修復
+現在再次嘗試進入：
+
+Bash
+
+claude
+如果進入後依然看到 Auto-update failed，請在 claude 介面外執行：
+
+Bash
+
+claude doctor
+這時它應該會偵測到權限問題並詢問你是否要修復，請選 Yes。
+
+如果上述方法還是失敗（替代方案：npx）
+如果你不想被安裝過程折磨，想直接使用的話，可以使用 npx，它會自動下載並執行最新版本，完全避開安裝與權限問題：
+
+Bash
+
+npx @anthropic-ai/claude-code
+為什麼會 403？
+剛才的 curl 403 錯誤通常是因為 Anthropic 的伺服器防火牆攔截了非瀏覽器的直接請求。在 Linux 上，使用 npm 仍然是目前最保險的途徑。
+
+請試試看第一組 sudo npm install 指令，如果安裝完輸入 claude 還是報錯，請把報錯內容貼給我。
+=============================================================
+太好了，這代表 claude 指令已經成功安裝回你的系統中。
+
+現在，請直接輸入以下指令啟動它：
+
+Bash
+
+claude
+啟動後可能遇到的情況：
+如果能正常進入： 恭喜！你現在可以在 ~/taifex-query 目錄下開始與它對話。
+
+如果再次出現 Auto-update failed： 這表示雖然裝好了，但 npm 的全域權限依然擋住了它的自動更新功能。請直接在終端機輸入：
+
+Bash
+
+claude doctor
+看到詢問 "Fix permissions?" 或類似選項時，請輸入 y 或按 Enter。
+
+💡 一個讓 Ubuntu 使用更順暢的小建議
+如果你之後發現 claude 還是常噴權限錯誤，最好的長期解法是把全域 npm 的目錄改到你的家目錄下，這樣以後裝任何工具都不需要 sudo：
+
+Bash
+
+# 建立一個給全域使用的目錄
+mkdir ~/.npm-global
+# 設定 npm 使用新路徑
+npm config set prefix '~/.npm-global'
+# 把路徑加入你的 .bashrc
+echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
+# 之後安裝就不用 sudo 了：npm install -g @anthropic-ai/claude-code
+現在請試著執行 claude，看看能不能順利看到對話視窗？
