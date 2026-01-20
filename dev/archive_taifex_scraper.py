@@ -548,6 +548,8 @@ def save_to_csv(data, filename=None, format_type='f01'):
     else:  # full format
         # 完整格式：包含所有三大法人資訊
         date_display = data['date'].replace('/', '.')
+        if filename is None:
+            filename = f"taifex_{date_display}_full.csv"
 
         traders = {
             '自營商': data['data']['proprietary_traders'],
@@ -649,7 +651,7 @@ def start_hotkey_listener():
     print("ESC: 停止監聽")
     print("="*60 + "\n")
 
-    with keyboard.Listener(on_press=on_press) as listener:
+    with keyboard.Listener(on_press=on_press) as listener:  # type: ignore[arg-type]
         listener.join()
 
 
