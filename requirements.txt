@@ -4,3 +4,5 @@ beautifulsoup4>=4.12.2
 lxml>=4.9.3
 python-dateutil>=2.8.2
 pytz>=2024.1
+pandas>=2.0.0
+pynput>=1.7.6

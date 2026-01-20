@@ -1,19 +1,18 @@
 {
-  "include": ["."],
+  "typeCheckingMode": "basic",
+  "pythonVersion": "3.9",
+  "pythonPlatform": "Windows",
   "exclude": [
     "**/node_modules",
     "**/__pycache__",
-    "**/venv-win",
-    "**/venv32",
-    "**/build",
-    "**/dist",
-    "**/docs"
+    "**/venv*",
+    "dev/archive_taifex_scraper.py"
   ],
-  "venvPath": ".",
-  "venv": "venv-win",
-  "pythonVersion": "3.10",
-  "typeCheckingMode": "basic",
   "reportMissingImports": true,
+  "reportMissingModuleSource": false,
   "reportMissingTypeStubs": false,
-  "pythonPlatform": "Windows"
+  "reportPrivateUsage": false,
+  "reportOptionalMemberAccess": false,
+  "reportOptionalSubscript": false,
+  "reportOptionalOperand": false
 }

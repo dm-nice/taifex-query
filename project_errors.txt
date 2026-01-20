@@ -1,0 +1,3 @@
+            "file": "c:\\AI\\Taifex\\dev\\archive_taifex_scraper.py",
+            "file": "c:\\AI\\Taifex\\dev\\archive_taifex_scraper.py",
+            "file": "c:\\AI\\Taifex\\dev\\archive_taifex_scraper.py",
