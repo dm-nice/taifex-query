@@ -1,4 +1,4 @@
-line.py/
+
 
 
 # Python
@@ -29,14 +29,20 @@ MANIFEST
 # Virtual Environment
 env/
 venv/
-venv32/
-
 venv-win/
-venv32-win/
-
 venv-linux/
 
+venv32/
+venv32-win/
+-------------------------
+# Environment variables
+.env
+.env.local
+-------------------------
+-------------
+line.py/
 
+----------
 # IDE
 .vscode/
 .idea/
@@ -45,15 +51,15 @@ venv-linux/
 *~
 .DS_Store
 
+--------------
 # Claude Code
 .claude/
 
+----------
+taifex
 # Output files (program generated)
 output/
-
-# Environment variables
-.env
-.env.local
+------------------
 
 # Testing
 .pytest_cache/
