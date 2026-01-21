@@ -53,6 +53,9 @@ def save_to_markdown(data_list, date_str=None, version=None, filename_prefix="ta
             line = f"{date_str} {f_code} [保留項目]"
         elif value == "查詢失敗":
             line = f"{date_str} {f_code} {name} [ 查詢失敗 ]"
+        elif 'price' in item:
+            # 夜盤格式 (F21-F25): - F25 台指期盤後 : 23456.78 [+36 , +0.15%]
+            line = f"{date_str} - {f_code} {name}   : {value}"
         else:
             # 判斷是否需要單位
             unit_str = f"{unit}" if unit else ""
@@ -61,6 +64,6 @@ def save_to_markdown(data_list, date_str=None, version=None, filename_prefix="ta
         lines.append(line)
         
     with open(file_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines) + "\n")
+        f.write("\n\n".join(lines) + "\n")
         
     return file_path

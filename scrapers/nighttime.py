@@ -25,15 +25,19 @@ def _parse_indicator_line(line, indicator_map):
     """
     從單行文本解析指標數據
     格式: "NASDAQ	23530.02	△58.27	0.25	04:59"
+    欄位: [名稱] [最新價] [漲跌] [漲幅%] [時間]
     """
     parts = line.split('\t')
-    if len(parts) < 3:
+    if len(parts) < 4:
         return None
 
     # 逐個檢查指標關鍵詞
     for search_key, (f_code, display_name) in indicator_map.items():
         if search_key not in line:
             continue
+
+        # 提取最新價（第二欄）
+        price_text = parts[1].strip()
 
         # 提取漲跌值（第三欄）
         change_text = parts[2].strip()
@@ -48,11 +52,26 @@ def _parse_indicator_line(line, indicator_map):
         # 標準化符號
         change_value = f"+{value_num}" if sign_char in ('▲', '△', '+') else f"-{value_num}"
 
+        # 提取漲幅%（第四欄）- 移除原有符號後加上統一正負號
+        percent_text = parts[3].strip() if len(parts) > 3 else ""
+        # 移除可能存在的負號，再加上統一正負號
+        percent_text = percent_text.lstrip('-')
+        if percent_text:
+            if sign_char in ('▲', '△', '+'):
+                percent_value = f"+{percent_text}%"
+            else:
+                percent_value = f"-{percent_text}%"
+        else:
+            percent_value = ""
+
         return {
             'f_code': f_code,
             'name': display_name,
-            'field': '漲跌幅',
-            'value': change_value,
+            'field': '',
+            'price': price_text,
+            'change': change_value,
+            'percent': percent_value,
+            'value': f"{price_text} [{change_value} , {percent_value}]",
             'unit': ''
         }
 
