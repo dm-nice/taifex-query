@@ -4,6 +4,9 @@ from utils.helpers import save_to_markdown
 from utils.date_utils import get_current_taiwan_date
 
 def main():
+    # 確保 output 目錄存在
+    os.makedirs("output", exist_ok=True)
+
     print(f"🚀 開始執行日盤資料抓取... ({get_current_taiwan_date()})")
     
     # 執行抓取
