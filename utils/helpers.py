@@ -1,6 +1,5 @@
 import os
 import re
-from datetime import datetime
 from utils.date_utils import get_current_taiwan_date
 
 def get_next_version(date_str=None, filename_prefix="taifex_"):
@@ -41,25 +40,26 @@ def save_to_markdown(data_list, date_str=None, version=None, filename_prefix="ta
         
     file_path = os.path.join("output", f"{filename_prefix}{date_str}_v{version}.md")
     
-    lines = []
+    # 第1行加上執行日期和交易時段
+    if "night" in filename_prefix:
+        lines = [f"{date_str} 夜盤交易"]
+    else:
+        lines = [f"{date_str} 日盤交易"]
     for item in data_list:
         f_code = item.get('f_code', 'F00')
         name = item.get('name', '未知項目')
         value = item.get('value', '查詢失敗')
-        unit = item.get('unit', '')
-        
-        # 格式化每行: 2026.01.15 F01 台指期貨-外資 [ 未平倉 多空淨額: -181389口 ]
+        field = item.get('field', '')
         if value == "保留項目":
-            line = f"{date_str} {f_code} [保留項目]"
+            line = f"{f_code} [保留項目]"
         elif value == "查詢失敗":
-            line = f"{date_str} {f_code} {name} [ 查詢失敗 ]"
+            line = f"{f_code} {name}  [查詢失敗]"
         elif 'price' in item:
-            # 夜盤格式 (F21-F25): - F25 台指期盤後 : 23456.78 [+36 , +0.15%]
-            line = f"{date_str} - {f_code} {name}   : {value}"
+            # 夜盤格式 (F21-F25): F25 台指期盤後 : 23456.78 [+36 , +0.15%]
+            line = f"{f_code} {name}  : {value}"
         else:
-            # 判斷是否需要單位
-            unit_str = f"{unit}" if unit else ""
-            line = f"{date_str} {f_code} {name} [ {item.get('field', '')}: {value}{unit_str} ]"
+            # 日盤格式: F01 臺股期貨-外資 多空淨額口數  [請填入:未平倉口數]
+            line = f"{f_code} {name}  [{field}: {value}]"
         
         lines.append(line)
         
