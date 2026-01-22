@@ -11,7 +11,9 @@ def main():
     
     if data:
         # 顯示結果摘要
-        print("\n📊 抓取結果摘要:")
+        current_date = get_current_taiwan_date()
+        print(f"\n{current_date}")
+        print("📊 抓取結果摘要:")
         for item in data:
             val = item.get('value', 'N/A')
             unit = item.get('unit', '')

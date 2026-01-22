@@ -84,9 +84,9 @@ def query_taifex_foreign_holdings(date_str: Optional[str] = None, session: Optio
         f01_val = cols[5].get_text(strip=True).replace(',', '')
         
         return [
-            {"f_code": "F01", "name": "台指期貨-外資", "field": "未平倉 多空淨額", "value": f01_val, "unit": "口"},
-            {"f_code": "F02", "name": "台指期貨-外資", "field": "未平倉 多方", "value": f02_val, "unit": "口"},
-            {"f_code": "F03", "name": "台指期貨-外資", "field": "未平倉 空方", "value": f03_val, "unit": "口"},
+            {"f_code": "F01", "name": "臺股期貨-外資 多空淨額口數", "field": "未平倉口數", "value": f01_val, "unit": ""},
+            {"f_code": "F02", "name": "臺股期貨-外資 多方口數", "field": "未平倉口數", "value": f02_val, "unit": ""},
+            {"f_code": "F03", "name": "臺股期貨-外資 空方口數", "field": "未平倉口數", "value": f03_val, "unit": ""},
         ]
     except Exception as e:
         print(f"F01-F03 Error: {e}")
@@ -114,7 +114,7 @@ def query_taifex_settlement(date_str: Optional[str] = None, session: Optional[re
             if len(tds) > 5 and "TX" in tds[0].get_text(strip=True):
                 price = tds[5].get_text(strip=True)
                 if price != "-":
-                    return [{"f_code": "F04", "name": "台指期貨-當日收盤", "field": "最後成交價", "value": price, "unit": ""}]
+                    return [{"f_code": "F04", "name": "臺股期貨-當日收盤價", "field": "最後成交價", "value": price, "unit": ""}]
         return None
     except Exception as e:
         print(f"F04 Error: {e}")
@@ -143,7 +143,7 @@ def query_taifex_options_volume(date_str: Optional[str] = None, session: Optiona
                 for td in cols:
                     text = td.get_text(strip=True).replace(',', '')
                     if text.isdigit():
-                        return [{"f_code": "F05", "name": "台指選擇權-當日", "field": "選擇權總成交量", "value": text, "unit": ""}]
+                        return [{"f_code": "F05", "name": "臺股期貨-當日選擇權", "field": "選擇權總成交量", "value": text, "unit": ""}]
         return None
     except Exception as e:
         print(f"F05 Error: {e}")
@@ -171,7 +171,7 @@ def query_taifex_pc_ratio(date_str: Optional[str] = None, session: Optional[requ
             if query_date_short in row.get_text():
                 cols = row.find_all('td')
                 if len(cols) >= 7:
-                    return [{"f_code": "F07", "name": "臺指選擇權Put/Call", "field": "買賣權未平倉量比率%", "value": cols[6].get_text(strip=True), "unit": ""}]
+                    return [{"f_code": "F07", "name": "臺指選擇權Put/Call比", "field": "買賣權未平倉量比率%", "value": cols[6].get_text(strip=True), "unit": ""}]
         return None
     except Exception as e:
         print(f"F07 Error: {e}")
@@ -221,8 +221,10 @@ def query_twse_market_data(date_str: Optional[str] = None, session: Optional[req
                 if "大盤統計資訊" in table.get('title', ''):
                     for row in table.get('data', []):
                         if "總計(1~15)" in row[0]: # Total Turnover
-                            # row[1] is Transaction Amount
-                            results.append({"f_code": "F12", "name": "大盤統計資訊", "field": "總計成交金額", "value": row[1].replace(',', ''), "unit": ""})
+                            # row[1] is Transaction Amount, convert to 億 unit
+                            raw_value = int(row[1].replace(',', ''))
+                            value_in_yi = raw_value / 100000000  # 轉換為億
+                            results.append({"f_code": "F12", "name": "大盤總交易額", "field": "總計成交金額", "value": f"{value_in_yi:.2f}億", "unit": ""})
                             break
                     break
 
@@ -253,9 +255,9 @@ def query_twse_stock_day(session: requests.Session, date_str: str, stock_no: str
                     vol_lots = vol_shares // 1000
                     
                     return [
-                        {"f_code": "F14", "name": f"{stock_no}台積電-當日", "field": "收盤價", "value": close, "unit": ""},
-                        {"f_code": "F15", "name": f"{stock_no}台積電-當日", "field": "漲跌價差", "value": change, "unit": ""},
-                        {"f_code": "F16", "name": f"{stock_no}台積電-當日", "field": "成交張數", "value": str(vol_lots), "unit": "張"},
+                        {"f_code": "F14", "name": f"{stock_no} 台積電-當日收盤價", "field": "收盤價", "value": close, "unit": ""},
+                        {"f_code": "F15", "name": f"{stock_no} 台積電-當日漲跌", "field": "漲跌價差", "value": f"+{change}" if not change.startswith('-') else change, "unit": ""},
+                        {"f_code": "F16", "name": f"{stock_no} 台積電-當日交易", "field": "成交張數", "value": f"{vol_lots}張", "unit": ""},
                     ]
         return None
     except Exception as e:
@@ -275,8 +277,10 @@ def query_twse_foreign_buy(session: requests.Session, date_str: str) -> Optional
         if resp.get('stat') == 'OK' and 'data' in resp:
             for row in resp['data']:
                 if "外資及陸資" in row[0]:
-                    net_buy = row[3].replace(',', '')
-                    return [{"f_code": "F17", "name": "台灣股票外資及陸資", "field": "買賣差額", "value": net_buy, "unit": ""}]
+                    raw_value = int(row[3].replace(',', ''))
+                    value_in_yi = abs(raw_value) / 100000000  # 轉換為億
+                    sign = "+" if raw_value >= 0 else "-"
+                    return [{"f_code": "F17", "name": "台灣股票外資及陸資 淨買賣額", "field": "買賣差額", "value": f"{sign}{value_in_yi:.2f}億", "unit": ""}]
         return None
     except Exception as e:
         print(f"F17 Error: {e}")
