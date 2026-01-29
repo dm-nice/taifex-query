@@ -57,6 +57,11 @@ def save_to_markdown(data_list, date_str=None, version=None, filename_prefix="ta
         elif 'price' in item:
             # 夜盤格式 (F21-F25): F25 台指期盤後 : 23456.78 [+36 , +0.15%]
             line = f"{f_code} {name}  : {value}"
+        elif 'field2' in item and 'value2' in item:
+            # 多欄位格式 (F04/F11/F14): F04 臺股期貨-當日收盤價  [最後成交價: 32777]  [漲跌價差: -148]
+            field2 = item.get('field2', '')
+            value2 = item.get('value2', '')
+            line = f"{f_code} {name}  [{field}: {value}]  [{field2}: {value2}]"
         else:
             # 日盤格式: F01 臺股期貨-外資 多空淨額口數  [請填入:未平倉口數]
             line = f"{f_code} {name}  [{field}: {value}]"
