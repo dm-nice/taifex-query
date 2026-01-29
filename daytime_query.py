@@ -18,9 +18,18 @@ def main():
         print(f"\n{current_date}")
         print("📊 抓取結果摘要:")
         for item in data:
-            val = item.get('value', 'N/A')
-            unit = item.get('unit', '')
-            print(f"  - {item['f_code']} {item['name']}: {val} {unit}")
+            f_code = item.get('f_code', 'F00')
+            name = item.get('name', '')
+            field = item.get('field', '')
+            value = item.get('value', 'N/A')
+
+            if 'field2' in item and 'value2' in item:
+                # 多欄位格式 (F04/F11/F14)
+                field2 = item.get('field2', '')
+                value2 = item.get('value2', '')
+                print(f"  - {f_code} {name}  [{field}: {value}]  [{field2}: {value2}]")
+            else:
+                print(f"  - {f_code} {name}  [{field}: {value}]")
             
         # 存檔
         filepath = save_to_markdown(data)
