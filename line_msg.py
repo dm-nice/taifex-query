@@ -3,10 +3,13 @@ import sys
 import requests
 from dotenv import load_dotenv
 
+# 從環境變數中取得資訊
+# 填入您剛領取的 2項 資訊
 # 載入 .env 檔案中的環境變數
+# TOKEN =  LINE 認證金鑰
+# GROUP_ID =  目標群組 ID
 load_dotenv()
 
-# 從環境變數中取得資訊
 TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 GROUP_ID = os.getenv("LINE_GROUP_ID")
 
